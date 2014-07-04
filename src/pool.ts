@@ -50,7 +50,7 @@ class Pool extends events.EventEmitter implements IPool {
 		this.options.paralel = lib.optValue(this.options.paralel, 1);
 		this.options.attempts = lib.optValue(this.options.attempts, 3);
 		this.options.timeout = lib.optValue(this.options.timeout, 0);
-		this.options.idleTimeout = lib.optValue(this.options.idleTimeout, 0);
+		this.options.idleTimeout = lib.optValue(this.options.idleTimeout, 500);
 		this.options.log = lib.optValue(this.options.log, false);
 		this.options.emit = lib.optValue(this.options.emit, false || this.options.log);
 
