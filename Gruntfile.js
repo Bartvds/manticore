@@ -97,10 +97,7 @@ module.exports = function (grunt) {
 	});
 
 	grunt.registerTask('prep', [
-		'clean:tmp',
-		'clean:dist',
-		'clean:test',
-		'clean:cruft',
+		'clean',
 		'jshint:support'
 	]);
 
@@ -136,7 +133,6 @@ module.exports = function (grunt) {
 	grunt.registerTask('prepublish', [
 		'build',
 		'ts:test',
-		'mochaTest:module',
 		'tslint:test',
 		'sweep',
 		'clean:tmp',

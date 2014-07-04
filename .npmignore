@@ -1,22 +1,10 @@
 /.idea
-/assets
-/cache
-/cookbooks
-/deploy
-/docs
-/media
 /src
 /tasks
 /test
 /typings
-/tsd-cache
-/util
-/tool
-/repo
-/lib
 /scratch
 
-/tsd-config.json
 /tsd.json
 /tslint.json
 /Vagrantfile
@@ -32,7 +20,6 @@
 .editorconfig
 
 /tscommand*
-ignoreBaseDirFile.*
 .tscache
 tmp/
 
