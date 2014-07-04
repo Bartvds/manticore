@@ -106,7 +106,7 @@ class Pool extends events.EventEmitter implements IPool {
 			for (var i = 0, ii = this.workers.length; i < ii; i++) {
 				var worker = this.workers[i];
 				if (worker.active < this.options.paralel) {
-					if (!best || best.active > worker.active) {
+					if (!best || worker.active < best.active) {
 						best = worker;
 					}
 				}

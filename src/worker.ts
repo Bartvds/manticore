@@ -41,7 +41,7 @@ function runFunc(msg: lib.IStartMessage): void {
 
 	if (!(msg.task in state.tasks)) {
 		res.type = lib.ERROR;
-		res.error = new Error('missing task ' + msg.task);
+		res.error = new Error('unknown task ' + msg.task);
 		return;
 	}
 
@@ -49,31 +49,40 @@ function runFunc(msg: lib.IStartMessage): void {
 	var hasSent = false;
 	var result: any = null;
 
-	try {
-		result = state.tasks[msg.task](msg.params, (error: Error, result: any) => {
-			if (!hasSent) {
-				hasSent = true;
-				res.duration = Date.now() - start;
-				res.error = error;
-				res.result = result;
-				process.send(res, null);
-			}
-		});
-		// TODO support Promises
-		if (result && !hasSent) {
+	var send = () => {
+		if (!hasSent) {
 			hasSent = true;
 			res.duration = Date.now() - start;
-			res.result = result;
-
 			process.send(res, null);
+		}
+	};
+
+	try {
+		result = state.tasks[msg.task](msg.params, (error: Error, result: any) => {
+			res.error = error;
+			res.result = result;
+			send();
+		});
+		if (typeOf(result) !== 'undefined' && !hasSent) {
+			if (typeOf(result.then) === 'function') {
+				result.then((res: any) => {
+					res.result = result;
+					send();
+				}, (err: Error) => {
+					res.error = err;
+					send();
+				});
+			}
+			else {
+				res.result = result;
+				send();
+			}
 		}
 	}
 	catch (e) {
-		hasSent = true;
 		res.type = lib.TASK_ABORT;
-		res.duration = Date.now() - start;
 		res.error = e;
-		process.send(res, null);
+		send();
 	}
 }
 
