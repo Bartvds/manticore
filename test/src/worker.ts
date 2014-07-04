@@ -3,6 +3,7 @@
 'use strict';
 
 import Manticore = require('manticore');
+import Promise = require('es6-promises');
 
 var mc: typeof Manticore = require('../../dist/index');
 
