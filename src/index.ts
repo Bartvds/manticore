@@ -4,16 +4,17 @@
 
 import os = require('os');
 
-import worker = require('./worker');
+import client = require('./client');
 import pool = require('./pool');
 import lib = require('./lib');
 
-export import registerTasks = worker.registerTasks;
-export import registerTask = worker.registerTask;
+export import registerTasks = client.registerTasks;
+export import registerTask = client.registerTask;
 export import createPool = pool.createPool;
 
 // helpers
 export import assertProp = lib.assertProp;
 export import assertType = lib.assertType;
+export import IOptions = lib.IOptions;
 
-[worker, pool, lib];
+[client, pool, lib];

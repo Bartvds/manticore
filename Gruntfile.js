@@ -62,7 +62,7 @@ module.exports = function (grunt) {
 					declaration: true,
 					noImplicitAny: true
 				},
-				src: ['src/index.ts'],
+				src: ['src/**/*.ts'],
 				outDir: 'dist/'
 			},
 			test: {

@@ -2,163 +2,153 @@
 
 'use strict';
 
+declare function setTimeout(callback: (...args: any[]) => void, ms: number, ...args: any[]): NodeJS.Timer;
+declare function clearTimeout(timeoutId: NodeJS.Timer): void;
+
 import path = require('path');
-import util = require('util');
+import events = require('events');
 import assertMod = require('assert');
-import typeOf = require('type-detect');
+import child_process = require('child_process');
+
+import Promise = require('es6-promises');
+import JSONStream = require('JSONStream');
 
 import lib = require('./lib');
 
-var state = {
-	id: 'worker.' + process.pid,
-	tasks: <ITaskDict> Object.create(null),
-	active: <IHandleDict> Object.create(null)
-};
+var jobI: number = 0;
 
-export interface ITaskFunc {
-	(params: any, callback: lib.IResultCallback): any;
-}
+export class Job {
+	id: string;
+	task: string;
+	params: any;
+	attempts: number = 1;
+	callback: lib.IResultCallback;
 
-export interface ITaskDict {
-	[name: string]: ITaskFunc;
-}
+	constructor(task: string, params: any, callback: lib.IResultCallback) {
+		this.id = 'job.' + jobI++;
+		this.task = task;
+		this.params = params;
+		this.callback = callback;
+	}
 
-interface IHandle {
-	msg: lib.IStartMessage;
-	res: lib.IResultMessage;
-	hasSent(): boolean;
-	send(): void;
-}
-
-interface IHandleDict {
-	[id: string]: IHandle;
-}
-
-function abortAll(): void {
-	for (var id in state.active) {
-		var info = state.active[id];
-		info.res.type = lib.TASK_ABORT;
-		info.send();
+	toString(): string {
+		return this.id + '-' + this.task;
 	}
 }
 
-function defineTask(name: string, func: ITaskFunc): void {
-	lib.assertType(name, 'string', 'name');
-	lib.assertType(func, 'function', 'func');
-	assertMod(!(name in state.tasks), 'cannot redefine task ' + name + '');
-
-	state.tasks[name] = func;
+interface JobDict {
+	[id: string]: Job;
 }
 
-export function registerTasks(map: any): void {
-	if (typeOf(map) === 'array') {
-		map.forEach(registerTask);
-	}
-	else if (typeOf(map) === 'object') {
-		Object.keys(map).forEach((name) => {
-			var func = map[name];
-			lib.assertType(func, 'function', name);
-			defineTask(name, func);
-		});
-	}
-}
+export class Worker extends events.EventEmitter {
+	id: string;
+	active: number = 0;
 
-export function registerTask(arg: any, func?: ITaskFunc): void {
-	if (typeOf(arg) === 'function') {
-		func = arg;
-		arg = arg.name;
-	}
-	defineTask(arg, func);
-}
+	private options: lib.IOptions;
+	private child: child_process.ChildProcess;
+	private jobs: JobDict = Object.create(null);
+	private idleTimer: NodeJS.Timer;
 
-function runFunc(msg: lib.IStartMessage): void {
-	var res: lib.IResultMessage = {
-		worker: state.id,
-		type: lib.TASK_RESULT,
-		id: msg.id,
-		error: null,
-		result: null,
-		duration: null
-	};
+	kill: () => void;
 
-	var start = Date.now();
-	var result: any = null;
-	var hasSent: boolean = false;
+	constructor(options: lib.IOptions) {
+		super();
 
-	var info: IHandle = {
-		msg: msg,
-		res: res,
-		hasSent: () => {
-			return hasSent;
-		},
-		send: () => {
-			delete state.active[msg.id];
+		this.options = options;
 
-			if (!hasSent) {
-				// errors don't serialise well
-				if (typeOf(res.error) === 'object') {
-					var err = {
-						name: res.error.name,
-						message: res.error.message,
-						stack: res.error.stack,
-						// add some bling
-						code: res.error.code,
-						actual: res.error.actual,
-						expected: res.error.expected
-					};
-					res.error = err;
+		var args: string[] = [
+			this.options.modulePath
+		];
+		var opts = {
+			cwd: process.cwd(),
+			stdio: ['ignore', process.stdout, process.stderr, 'ipc']
+		};
+
+		this.child = child_process.spawn(process.execPath, args, opts);
+		this.id = 'worker.' + this.child.pid;
+
+		var onMsg = (msg: lib.IResultMessage) => {
+			if (msg.type === lib.TASK_RESULT) {
+				if (msg.id in this.jobs) {
+					var job = this.jobs[msg.id];
+					this.active--;
+					delete this.jobs[msg.id];
+
+					job.callback(msg.error, msg.result);
+					this.emit(lib.TASK_RESULT, job);
+					this.resetIdle();
 				}
-				res.duration = Date.now() - start;
-				hasSent = true;
-				process.send(res, null);
 			}
-		}
-	};
+		};
+		var onError = (error: any) => {
+			this.emit(lib.STATUS, ['job error', this, error]);
+			this.kill();
+		};
+		var onClose = (code: number) => {
+			this.emit(lib.STATUS, ['job close', this, code]);
+			this.kill();
+		};
 
-	state.active[msg.id] = info;
+		this.child.on('message', onMsg);
+		this.child.on('error', onError);
+		this.child.on('close', onClose);
 
-	if (!(msg.task in state.tasks)) {
-		res.type = lib.ERROR;
-		res.error = new Error('unknown task ' + msg.task);
-		info.send();
+		this.kill = () => {
+			if (this.child) {
+				this.child.removeAllListeners();
+				this.child.kill('SIGKILL');
+				this.child = null;
+			}
+			this.emit(lib.WORKER_DOWN);
+
+			for (var id in this.jobs) {
+				var job = this.jobs[id];
+				this.active--;
+				delete this.jobs[id];
+				this.emit(lib.TASK_ABORT, job);
+			}
+
+			if (this.idleTimer) {
+				clearTimeout(this.idleTimer);
+			}
+		};
 	}
 
-	try {
-		result = state.tasks[msg.task](msg.params, (error: Error, result: any) => {
-			res.error = error;
-			res.result = result;
-			info.send();
-		});
-		if (typeOf(result) !== 'undefined' && !hasSent) {
-			if (typeOf(result.then) === 'function') {
-				result.then((result: any) => {
-					res.result = result;
-					info.send();
-				}, (err: Error) => {
-					res.error = err;
-					info.send();
-				});
-			}
-			else {
-				res.result = result;
-				info.send();
-			}
+	run(job: Job): void {
+		if (!this.child) {
+			this.emit(lib.TASK_ABORT, job);
+			return;
+		}
+		this.jobs[job.id] = job;
+		this.active++;
+		this.resetIdle();
+
+		this.emit(lib.STATUS, ['job start', this, job]);
+
+		var msg: lib.IStartMessage = {
+			type: lib.TASK_RUN,
+			task: job.task,
+			id: job.id,
+			params: job.params
+		};
+		this.child.send(msg, null);
+	}
+
+	resetIdle(): void {
+		if (this.idleTimer) {
+			clearTimeout(this.idleTimer);
+		}
+		if (this.options.idleTimeout > 0) {
+			this.idleTimer = setTimeout(() => {
+				if (this.active === 0) {
+					this.emit(lib.STATUS, ['worker idle', this]);
+					this.kill();
+				}
+			}, this.options.idleTimeout);
 		}
 	}
-	catch (e) {
-		res.error = e;
-		info.send();
+
+	toString(): string {
+		return this.id + ' <' + (this.child ? (this.active + '/' + this.options.paralel) : 'killed') + '>';
 	}
 }
-
-process.on('uncaughtException', (err: Error) => {
-	abortAll();
-	// rethrow
-	throw err;
-});
-
-process.on('message', (msg: any) => {
-	if (msg.type === lib.TASK_RUN) {
-		runFunc(<lib.IStartMessage> msg);
-	}
-});

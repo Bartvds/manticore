@@ -19,6 +19,9 @@
 		},
 		"es6-promises/es6-promises.d.ts": {
 			"commit": "0f4b74d289ff9d3cebac6d64c99ea6bc3943f7f3"
+		},
+		"JSONStream/JSONStream.d.ts": {
+			"commit": "b34cae36a7c85a06c720e66de0386375064a8662"
 		}
 	}
 }

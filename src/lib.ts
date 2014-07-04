@@ -13,6 +13,17 @@ export var ERROR: string = 'error';
 
 export var STATUS: string = 'status';
 
+export interface IOptions {
+	modulePath: string;
+	concurrent?: number;
+	paralel?: number;
+	attempts?: number;
+	timeout?: number;
+	idleTimeout?: number;
+	log?: boolean;
+	emit?: boolean;
+}
+
 export interface IStartMessage {
 	id: string;
 	type: string;
