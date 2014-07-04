@@ -230,7 +230,7 @@ class Worker extends events.EventEmitter {
 		];
 		var opts = {
 			cwd: process.cwd(),
-			stdio: ['ignore', 'inherit', 'inherit', 'ipc']
+			stdio: ['ignore', process.stdout, process.stderr, 'ipc']
 		};
 
 		this.child = child_process.spawn(process.execPath, args, opts);
