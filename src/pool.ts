@@ -46,11 +46,11 @@ class Pool extends events.EventEmitter implements IPool {
 
 		this.options = options;
 		this.options.modulePath = path.resolve(this.options.modulePath);
-		this.options.concurrent = lib.optValue(this.options.concurrent, os.cpus().length);
+		this.options.concurrent = lib.optValue(this.options.concurrent, Math.max(1, os.cpus().length - 1));
 		this.options.paralel = lib.optValue(this.options.paralel, 1);
 		this.options.attempts = lib.optValue(this.options.attempts, 3);
 		this.options.timeout = lib.optValue(this.options.timeout, 0);
-		this.options.idleTimeout = lib.optValue(this.options.idleTimeout, 5000);
+		this.options.idleTimeout = lib.optValue(this.options.idleTimeout, 0);
 		this.options.log = lib.optValue(this.options.log, false);
 		this.options.emit = lib.optValue(this.options.emit, false || this.options.log);
 
@@ -73,8 +73,9 @@ class Pool extends events.EventEmitter implements IPool {
 			});
 			this.queuedJobs.push(job);
 
+			this.status('add', job);
+
 			this.checkQueue();
-			this.status('run', task);
 		});
 	}
 
@@ -129,7 +130,6 @@ class Pool extends events.EventEmitter implements IPool {
 		if (i > -1) {
 			this.workers.splice(i, 1);
 		}
-		this.status('removed worker', '<' + worker, this.workers.length + '/' + this.options.concurrent + '>');
 	}
 
 	private spawnWorker(): Worker {
@@ -140,6 +140,11 @@ class Pool extends events.EventEmitter implements IPool {
 
 			this.removeWorker(worker);
 			worker.kill();
+			this.checkQueue();
+		});
+
+		worker.on(lib.TASK_RESULT, (job: Job) => {
+			this.status('job complete', worker, job);
 			this.checkQueue();
 		});
 
@@ -156,12 +161,7 @@ class Pool extends events.EventEmitter implements IPool {
 			this.checkQueue();
 		});
 
-		worker.on(lib.TASK_RESULT, (job: Job) => {
-			this.status('job complete', worker, job);
-			this.checkQueue();
-		});
-
-		worker.on(lib.WORKER_DOWN, (worker: Worker) => {
+		worker.on(lib.WORKER_DOWN, () => {
 			this.status('worker down', worker);
 			this.removeWorker(worker);
 			this.checkQueue();
@@ -244,7 +244,6 @@ class Worker extends events.EventEmitter {
 			}
 		};
 		var onClose = (code: number) => {
-			this.emit(lib.STATUS, ['worker closed', this, code]);
 			this.kill();
 		};
 
@@ -263,7 +262,7 @@ class Worker extends events.EventEmitter {
 				this.child.kill('SIGKILL');
 				this.child = null;
 			}
-			this.emit(lib.WORKER_DOWN, this);
+			this.emit(lib.WORKER_DOWN);
 
 			if (this.idleTimer) {
 				clearTimeout(this.idleTimer);
@@ -296,7 +295,7 @@ class Worker extends events.EventEmitter {
 		if (this.idleTimer) {
 			clearTimeout(this.idleTimer);
 		}
-		if (this.options.idleTimeout) {
+		if (this.options.idleTimeout > 0) {
 			this.idleTimer = setTimeout(() => {
 				if (this.active === 0) {
 					this.emit(lib.STATUS, ['worker idle', this]);

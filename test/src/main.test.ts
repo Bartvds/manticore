@@ -7,7 +7,7 @@ import chai = require('chai');
 import child_process = require('child_process');
 var assert = chai.assert;
 
-function testManti(main: string) {
+function testMantiSub(main: string) {
 	var script = path.resolve(main);
 
 	it(path.relative(__dirname, script), (done) => {
@@ -32,5 +32,5 @@ function testManti(main: string) {
 }
 
 describe('cases', () => {
-	testManti(path.join(__dirname, 'simple', 'main.js'));
+	testMantiSub(path.join(__dirname, 'simple', 'main.js'));
 });

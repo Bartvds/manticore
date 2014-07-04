@@ -4,13 +4,15 @@
 
 import Manticore = require('manticore');
 import Promise = require('es6-promises');
+import chai = require('chai');
+var assert = chai.assert;
 
 var mc: typeof Manticore = require('../../../dist/index');
 
 var pool = mc.createPool({
 	log: true,
 	modulePath: require.resolve('./worker'),
-	concurrent: 1
+	concurrent: 4
 });
 
 Promise.all([
@@ -21,8 +23,9 @@ Promise.all([
 	.then((res: any[]) => {
 		console.log('done!');
 		console.log(res);
+		assert.deepEqual(res, [3, 60, 45]);
 		// process.exit(0);
-	}, (err) => {
+	}).then((err) => {
 		if (err) {
 			throw err;
 		}
