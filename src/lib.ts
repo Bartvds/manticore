@@ -24,7 +24,7 @@ export interface IResultMessage {
 	id: string;
 	type: string;
 	worker: string;
-	error: Error;
+	error: any;
 	result: any;
 	duration: number;
 }
@@ -38,8 +38,8 @@ export function assertProp(value: any, prop: string, type: string): void {
 	assertMod(typeOf(value[prop]) === type, 'expected value.' + prop + ' to be a ' + type);
 }
 
-export function assertType(value: any, type: string): void {
-	assertMod(typeOf(value) === type, 'expected value to be a ' + type);
+export function assertType(value: any, type: string, label?: string): void {
+	assertMod(typeOf(value) === type, 'expected ' + (label || value) + ' to be a ' + type);
 }
 
 export function optValue<T>(value: T, alt: T): T {

@@ -234,20 +234,28 @@ class Worker extends events.EventEmitter {
 		};
 		var onMsg = (msg: lib.IResultMessage) => {
 			if (msg.type === lib.TASK_RESULT) {
-				var job = this.jobs[msg.id];
-				this.active--;
-				delete this.jobs[msg.id];
+				if (msg.id in this.jobs) {
+					var job = this.jobs[msg.id];
+					this.active--;
+					delete this.jobs[msg.id];
 
-				job.callback(msg.error, msg.result);
-				this.emit(lib.TASK_RESULT, job);
-				this.resetIdle();
+					job.callback(msg.error, msg.result);
+					this.emit(lib.TASK_RESULT, job);
+					this.resetIdle();
+				}
 			}
 		};
+		var onError = (error: any) => {
+			this.emit(lib.STATUS, ['job error', this, error]);
+			this.kill();
+		};
 		var onClose = (code: number) => {
+			this.emit(lib.STATUS, ['job close', this, code]);
 			this.kill();
 		};
 
 		this.child.on('message', onMsg);
+		this.child.on('error', onError);
 		this.child.on('close', onClose);
 
 		this.kill = () => {

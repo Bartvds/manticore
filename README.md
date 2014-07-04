@@ -22,48 +22,55 @@ Instead of trying to wrangle my app to fit those unsatisfactory modules I build 
 
 ## So how do I use it?
 
-You put your code in a function that accepts a single parameter, then add a bunch of them in a module. In this module you register the methods to expose them as tasks. Then in your main app you setup the pool for that module and execute the methods with your parameter object and Manticore will spawn (and despawn) workers as needed and distribute the work and return the result as a Promise. 
+You put your code in a function that accepts a single parameter, then add a bunch of them in a worker module. In this module you register the functions to expose them as tasks. In your main app you setup the pool for that module and execute the methods via the pool with your data parameter and Manticore will spawn (and despawn) workers as needed and distribute the work and return the result as a Promise. 
 
-You can use a synchronous function that returns a result directly, use a node.js style callback or return a Promise. 
+You can use a function that returns a value synchronously, or go asynchronous and either use the node.js-style callback or return a Promise. 
 
-By default each worker work on one job at a time, but there is an option to allow workers to handle on multiple jobs simultaneously, which allows a extra boost for IO-bound tasks by keeping the node theads active during IO (of course assuming you use async IO).
+By default each worker works on only one job at a time, but there is an option to allow workers to process multiple jobs simultaneously, which allows a extra boost for IO-bound tasks by keeping the node threads active during IO (of course assuming you use async IO).
+
 
 ## What do I get?
 
-The return value of the pool is always a ES6-style Promise so you easily use fancy logic like Promise.all() or Promise.race(). For some next level setups you can leverage Promise-glue helpers from modules like Q, Bluebird etc. To get creative and pass the Promises into more exotic modules like React, Baconjs, Lazy.js, Highland and all the cool utility modules with Promise support.
+The return value of the pool is always a ES6-style Promise so you easily use fancy logic like Promise.all() or Promise.race().
+
+For some next level setups you can leverage Promise-glue helpers from modules like Q, Bluebird etc. To get creative and pass the Promises into more exotic modules like React, Baconjs, Lazy.js, Highland and all the cool utility modules with Promise support.
 
 Keep in mind the parameter object and return value are passed between different node forks using `process.send()` so you cannot pass functions or prototype based objects.
 
 
 ## What do you use this for?
 
-All kinds of stuff; first use-case was bulk operations with various TypeScript related modules (processing 500+ file-sets). The TypeScript compiler is a huge JS file, fully synchronous and just very slow because it does so much work. So you'd want to use all CPU cores you got and crunch different file-sets simultaneously (one compiler per core works nicely). 
+All kinds of stuff; first use-case was bulk operations with various TypeScript related modules (processing 500+ file-sets). The TypeScript compiler is a huge JS file, fully synchronous and just very slow because it does so much work. 
 
-I used to run single-use sub-processes in parallel for every file-set, which was already a lot faster compared with serial execution on a single core. But the start-up time for every spawn was annoying: node takes time to start, and then it needs to load and compile the huge JavaScript file of the TS compiler. Using Manticore you can easily rig something to keep the worker processes alive for re-use and take maximum profit from V8's hot-code JIT.  
+So you'd want to use all CPU cores you got and crunch different file-sets simultaneously (one compiler per core works nicely). I used to run single-use sub-processes in parallel for every file-set, which was already a lot faster compared with serial execution on a single core. 
+
+But the start-up time for every spawn became annoying: node takes time to initialise and then it still needs to compile the huge JavaScript file of the TS compiler. Using Manticore you can easily rig something to keep the worker processes alive for re-use and take maximum profit from V8's hot-code JIT.  
+
+This module is also handy for doing heavy data crunching like processing images in JavaScript.
 
 
 ## Usage
 
-Put slow methods in a worker module:
+Put the worker methods in their own module:
 
 ````js
 var mc = require('manticore');
 
-// run syncronous?
+// does it run syncronous?
 function myFunc1(params) {
-    return bigOperation(params);
+    return heavyStuff(params);
 }
 
 // maybe use the node-style callback?
 function myFunc2(params, callback) {
-    heavyWork(params, function(err, result) {
+    heavyStuff(params, function(err, result) {
         callback(err, result);
     });
 }
 
 // or return a Promise?
 function myFunc3(params) {
-    return heavyWork(params).then(function(res) {
+    return heavyStuff(params).then(function(res) {
         return someMoreWork(res)
     };
 }

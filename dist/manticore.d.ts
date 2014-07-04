@@ -19,6 +19,7 @@ declare module '__manticore/worker' {
         [name: string]: ITaskFunc;
     }
     export function registerTasks(map: ITaskDict): void;
+    export function registerTask(arg: any, func: ITaskFunc): void;
 }
 
 declare module '__manticore/pool' {
@@ -56,7 +57,7 @@ declare module '__manticore/lib' {
         id: string;
         type: string;
         worker: string;
-        error: Error;
+        error: any;
         result: any;
         duration: number;
     }
@@ -64,7 +65,7 @@ declare module '__manticore/lib' {
         (err: Error, result: any): void;
     }
     export function assertProp(value: any, prop: string, type: string): void;
-    export function assertType(value: any, type: string): void;
+    export function assertType(value: any, type: string, label?: string): void;
     export function optValue<T>(value: T, alt: T): T;
 }
 
