@@ -47,7 +47,7 @@ class Pool extends events.EventEmitter implements IPool {
 
 		this.options = options;
 		this.options.modulePath = path.resolve(this.options.modulePath);
-		this.options.concurrent = lib.optValue(this.options.concurrent, Math.max(1, os.cpus().length - 1));
+		this.options.concurrent = lib.optValue(this.options.concurrent, os.cpus().length);
 		this.options.paralel = lib.optValue(this.options.paralel, 1);
 		this.options.attempts = lib.optValue(this.options.attempts, 3);
 		this.options.timeout = lib.optValue(this.options.timeout, 0);
@@ -225,12 +225,15 @@ class Worker extends events.EventEmitter {
 		super();
 
 		this.options = options;
-		var args: string[] = [];
+		var args: string[] = [
+			this.options.modulePath
+		];
 		var opts = {
-			cwd: process.cwd()
+			cwd: process.cwd(),
+			stdio: ['ignore', 'inherit', 'inherit', 'ipc']
 		};
 
-		this.child = child_process.fork(this.options.modulePath, args, opts);
+		this.child = child_process.spawn(process.execPath, args, opts);
 		this.id = 'worker.' + this.child.pid;
 
 		var onMsg = (msg: lib.IResultMessage) => {

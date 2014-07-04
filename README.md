@@ -164,12 +164,13 @@ var pool = mc.createPool({
 	modulePath: string;
 	
 	// maximum amount of worker processes
-	// - defaults: require('os').cpus().length -1
-	concurrent?: number;	
+	// - defaults: require('os').cpus().length
+	// tip: when running on many cores leave 1 core free for main process: require('os').cpus().length -1
+	concurrent?: number;
 	// maximum amount of jobs to pass to each worker
 	// set this to a higher value if your jobs are async and IO-bound
 	// - default: 1
-	paralel?: number;	
+	paralel?: number;
 	// maximum retries if a job (or worker) fails
 	attempts?: number;
 
