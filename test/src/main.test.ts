@@ -35,11 +35,10 @@ function testMantiSub(main: string) {
 	});
 }
 
-describe('logic', () => {
+describe('core', () => {
 	it('assertion', () => {
 		var pool = mc.createPool({
-			modulePath: require.resolve('./worker'),
-			concurrent: 2
+			modulePath: require.resolve('./worker')
 		});
 		return pool.run('assertionError', 123).then((res) => {
 			assert.fail('expected to fail');
@@ -47,6 +46,33 @@ describe('logic', () => {
 			assert.isObject(err);
 			assert.strictEqual(err.message, 'expected 123 to be a string');
 			assert.strictEqual(err.name, 'AssertionError');
+		});
+	});
+	it('anon', () => {
+		var pool = mc.createPool({
+			modulePath: require.resolve('./worker')
+		});
+		return pool.run('anon', 123).then((res) => {
+			assert.strictEqual(123, res);
+		});
+	});
+	it('named', () => {
+		var pool = mc.createPool({
+			modulePath: require.resolve('./worker')
+		});
+		return pool.run('named', 123).then((res) => {
+			assert.strictEqual(123, res);
+		});
+	});
+	it('array', () => {
+		var pool = mc.createPool({
+			modulePath: require.resolve('./worker')
+		});
+		return Promise.all([
+			pool.run('arrayA', 123),
+			pool.run('arrayB', 321)
+		]).then((res) => {
+			assert.deepEqual(res, [123, 321]);
 		});
 	});
 });

@@ -67,3 +67,22 @@ export function errorPromise(params: number[]): any {
 }
 
 mc.registerTasks(module.exports);
+
+mc.registerTasks([
+	function arrayA(params) {
+		return params;
+	},
+	function arrayB(params) {
+		return params;
+	}
+]);
+
+mc.registerTask('anon', function(params) {
+	return params;
+});
+
+function named(params) {
+	return params;
+}
+
+mc.registerTask(named);

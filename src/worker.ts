@@ -50,15 +50,20 @@ function defineTask(name: string, func: ITaskFunc): void {
 	state.tasks[name] = func;
 }
 
-export function registerTasks(map: ITaskDict): void {
-	Object.keys(map).forEach((name) => {
-		var func = map[name];
-		lib.assertType(func, 'function', name);
-		defineTask(name, func);
-	});
+export function registerTasks(map: any): void {
+	if (typeOf(map) === 'array') {
+		map.forEach(registerTask);
+	}
+	else if (typeOf(map) === 'object') {
+		Object.keys(map).forEach((name) => {
+			var func = map[name];
+			lib.assertType(func, 'function', name);
+			defineTask(name, func);
+		});
+	}
 }
 
-export function registerTask(arg: any, func: ITaskFunc): void {
+export function registerTask(arg: any, func?: ITaskFunc): void {
 	if (typeOf(arg) === 'function') {
 		func = arg;
 		arg = arg.name;

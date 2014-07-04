@@ -9,6 +9,7 @@ import pool = require('./pool');
 import lib = require('./lib');
 
 export import registerTasks = worker.registerTasks;
+export import registerTask = worker.registerTask;
 export import createPool = pool.createPool;
 
 // helpers

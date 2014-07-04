@@ -51,11 +51,28 @@ This module is also handy for doing heavy data crunching like processing images 
 
 ## Usage
 
-Put the worker methods in their own module:
+### Worker
+
+Put the worker methods in their own module where they are registered to Manticore:
 
 ````js
 var mc = require('manticore');
 
+// directly add named function
+function myFunc1(params) {
+	return heavyStuff(params);
+}
+mc.registerTask(myFunc1);
+
+// add anonymous function
+mc.registerTask('myFunc2', function(params) {
+	return heavyStuff(params);
+});
+````
+
+There are different ways to return values:
+
+````js
 // does it run syncronous?
 function myFunc1(params) {
     return heavyStuff(params);
@@ -74,13 +91,24 @@ function myFunc3(params) {
         return someMoreWork(res)
     };
 }
+````
 
-// now register the methods as an object
+Register in bulk:
+````js
+// add named functions as array
+mc.registerTasks([
+    myFunc1,
+    myFunc2,
+    myFunc3
+]);
+
+// register the methods as an object to redefine the name
+// - protip: use the module.exports object
 mc.registerTasks({
-    myFunc1: myFunc1
-    myFunc2: myFunc2
-    myFunc3: myFunc3
-})
+    myFuncA: myFunc1
+    myFuncB: myFunc2
+    myFuncC: myFunc3
+});
 ````
 
 

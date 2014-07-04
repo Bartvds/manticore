@@ -5,6 +5,7 @@ declare module 'manticore' {
     import pool = require('__manticore/pool');
     import lib = require('__manticore/lib');
     export import registerTasks = worker.registerTasks;
+    export import registerTask = worker.registerTask;
     export import createPool = pool.createPool;
     export import assertProp = lib.assertProp;
     export import assertType = lib.assertType;
@@ -18,8 +19,8 @@ declare module '__manticore/worker' {
     export interface ITaskDict {
         [name: string]: ITaskFunc;
     }
-    export function registerTasks(map: ITaskDict): void;
-    export function registerTask(arg: any, func: ITaskFunc): void;
+    export function registerTasks(map: any): void;
+    export function registerTask(arg: any, func?: ITaskFunc): void;
 }
 
 declare module '__manticore/pool' {
