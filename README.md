@@ -51,7 +51,7 @@ This module is also handy for doing heavy data crunching like processing images 
 
 ## Usage
 
-### Worker
+### Setup worker
 
 Put the worker methods in their own module where they are registered to Manticore:
 
@@ -111,6 +111,7 @@ mc.registerTasks({
 });
 ````
 
+## Use the pool
 
 Create a pool in the main app:
 
