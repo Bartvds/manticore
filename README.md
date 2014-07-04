@@ -182,7 +182,7 @@ var pool = mc.createPool({
 
 Manticore is written in TypeScript and compiled with Grunt. 
 
-For TypeScript user there is a `.d.ts` file both in the repo and bundled in the npm package (exported in package.json).
+For TypeScript user there is a `.d.ts` file both in the repo and bundled in the npm package (also exported in package.json).
 
 
 ## Build
