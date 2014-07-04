@@ -34,8 +34,9 @@ declare module '__manticore/pool' {
         log?: boolean;
         emit?: boolean;
     }
-    export interface IPool {
+    export interface IPool extends NodeJS.EventEmitter {
         run(task: string, params: any): Promise<any>;
+        curried(task: string): (params: any) => Promise<any>;
         shutdown(): void;
     }
     export function createPool(options: IOptions): IPool;

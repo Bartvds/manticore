@@ -26,8 +26,9 @@ export interface IOptions {
 	emit?: boolean;
 }
 
-export interface IPool {
+export interface IPool extends NodeJS.EventEmitter {
 	run(task: string, params: any): Promise<any>;
+	curried(task: string): (params: any) => Promise<any>;
 	shutdown(): void;
 }
 
@@ -77,6 +78,12 @@ class Pool extends events.EventEmitter implements IPool {
 
 			this.checkQueue();
 		});
+	}
+
+	curried(task: string): (params: any) => Promise<any> {
+		return (params: any) => {
+			return this.run(task, params);
+		};
 	}
 
 	shutdown(): void {
@@ -226,12 +233,6 @@ class Worker extends events.EventEmitter {
 		this.child = child_process.fork(this.options.modulePath, args, opts);
 		this.id = 'worker.' + this.child.pid;
 
-		var unlisten = () => {
-			if (this.child) {
-				this.child.removeListener('message', onMsg);
-				this.child.removeListener('close', onClose);
-			}
-		};
 		var onMsg = (msg: lib.IResultMessage) => {
 			if (msg.type === lib.TASK_RESULT) {
 				if (msg.id in this.jobs) {
@@ -259,18 +260,19 @@ class Worker extends events.EventEmitter {
 		this.child.on('close', onClose);
 
 		this.kill = () => {
+			if (this.child) {
+				this.child.removeAllListeners();
+				this.child.kill('SIGKILL');
+				this.child = null;
+			}
+			this.emit(lib.WORKER_DOWN);
+
 			for (var id in this.jobs) {
 				var job = this.jobs[id];
 				this.active--;
 				delete this.jobs[id];
 				this.emit(lib.TASK_ABORT, job);
 			}
-			if (this.child) {
-				unlisten();
-				this.child.kill('SIGKILL');
-				this.child = null;
-			}
-			this.emit(lib.WORKER_DOWN);
 
 			if (this.idleTimer) {
 				clearTimeout(this.idleTimer);

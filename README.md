@@ -135,13 +135,20 @@ pool.run('myFunc1', myParams).then(function(res) {
 });
 ````
 
-
-Pro-tip: for serious bulk processing use `Promise.all()` (in Bluebird have fun with `Promise.map()` etc).
+For convenience get a curried function:
 
 ````js
-Promise.all(myArray.map(function(data) {
-	return pool.run('myFunc1', data);
-})).then(function(results) {
+var func1 = pool.curried('myFunc1');
+
+func1(params).then(function(res) {
+    // got results
+});
+````
+
+Pro-tip: for serious bulk processing use `Promise.all()` (in Bluebird this is fun with `Promise.map()` etc).
+
+````js
+Promise.all(myArray.map(pool.curried('myFunc1'))).then(function(results) {
     // got all the results
 });
 ````
@@ -166,8 +173,6 @@ var pool = mc.createPool({
 	// maximum retries if a job (or worker) fails
 	attempts?: number;
 
-	// job timeout in miliseconds
-	timeout?: number;
 	// worker idle timeout in miliseconds, shuts down workers that are idling
 	idleTimeout?: number;
 	

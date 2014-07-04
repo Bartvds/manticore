@@ -75,6 +75,15 @@ describe('core', () => {
 			assert.deepEqual(res, [123, 321]);
 		});
 	});
+	it('curried', () => {
+		var pool = mc.createPool({
+			modulePath: require.resolve('./worker')
+		});
+		var curried = pool.curried('named');
+		return curried(123).then((res) => {
+			assert.strictEqual(123, res);
+		});
+	});
 });
 
 describe('resolution', () => {
