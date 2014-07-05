@@ -22,7 +22,9 @@ Instead of trying to wrangle my app to fit those unsatisfactory modules I build 
 
 ## So how do I use it?
 
-You put your code in a function that accepts a single parameter, then add a bunch of them in a worker module. In this module you register the functions to expose them as tasks. In your main app you setup the pool for that module and execute the methods via the pool with your data parameter and Manticore will spawn (and despawn) workers as needed and distribute the work and return the result as a Promise. 
+You put your code in a function that accepts a single parameter, then add a bunch of them in a worker module. In this module you register the functions to expose them as tasks.
+
+In your main app you setup the pool for that module and execute the methods via the pool with your data parameter and Manticore will spawn (and despawn) workers as needed and distribute the work and return the result as a Promise.
 
 You can use a function that returns a value synchronously, or go asynchronous and either use the node.js-style callback or return a Promise. 
 
@@ -35,7 +37,7 @@ The return value of the pool is always a ES6-style Promise so you easily use fan
 
 For some next level setups you can leverage Promise-glue helpers from modules like Q, Bluebird etc. To get creative and pass the Promises into more exotic modules like React, Baconjs, Lazy.js, Highland and all the cool utility modules with Promise support.
 
-Keep in mind the parameter object and return value are passed between different node forks using `process.send()` so you cannot pass functions or prototype based objects.
+Keep in mind the parameter object and return value are serialised between different node forks using so you cannot pass functions or prototype based objects.
 
 
 ## What do you use this for?
