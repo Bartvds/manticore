@@ -49,7 +49,6 @@ declare module '__manticore/lib' {
         concurrent?: number;
         paralel?: number;
         attempts?: number;
-        timeout?: number;
         idleTimeout?: number;
         log?: boolean;
         emit?: boolean;
@@ -74,5 +73,10 @@ declare module '__manticore/lib' {
     export function assertProp(value: any, prop: string, type: string): void;
     export function assertType(value: any, type: string, label?: string): void;
     export function optValue<T>(value: T, alt: T): T;
+    export class BumpTimeout {
+        constructor(delay: number, call: () => void, unRef?: boolean);
+        next(): void;
+        clear(): void;
+    }
 }
 

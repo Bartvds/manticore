@@ -2,9 +2,6 @@
 
 'use strict';
 
-declare function setTimeout(callback: (...args: any[]) => void, ms: number, ...args: any[]): NodeJS.Timer;
-declare function clearTimeout(timeoutId: NodeJS.Timer): void;
-
 import fs = require('fs');
 import path = require('path');
 import events = require('events');
@@ -54,7 +51,8 @@ export class Worker extends events.EventEmitter {
 	private write: NodeJS.ReadWriteStream;
 	private ready: boolean = false;
 	private jobs: JobDict = Object.create(null);
-	private idleTimer: NodeJS.Timer;
+	private idleTimer: lib.BumpTimeout;
+	private _activeCount: number = 0;
 
 	kill: () => void;
 
@@ -62,6 +60,16 @@ export class Worker extends events.EventEmitter {
 		super();
 
 		this.options = options;
+
+		this.idleTimer = new lib.BumpTimeout(this.options.idleTimeout, () => {
+			if (this.activeCount === 0) {
+				this.status('idle timeout');
+				this.kill();
+			}
+			else {
+				this.idleTimer.next();
+			}
+		});
 
 		var args: any[] = [
 			this.options.modulePath
@@ -82,14 +90,16 @@ export class Worker extends events.EventEmitter {
 			if (msg.type === lib.TASK_RESULT) {
 				if (msg.id in this.jobs) {
 					var job = this.jobs[msg.id];
+					this._activeCount--;
 					delete this.jobs[msg.id];
 
-					this.status('completed', job);
+					this.status('completed', job, Math.round(msg.duration) + 'ms');
 
 					job.callback(msg.error, msg.result);
 
 					this.emit(lib.TASK_RESULT, job);
-					this.resetIdle();
+
+					this.idleTimer.next();
 				}
 			}
 		});
@@ -112,7 +122,6 @@ export class Worker extends events.EventEmitter {
 				this.ready = true;
 
 				this.flushWaiting();
-				this.resetIdle();
 			}
 			else {
 				this.status('unknown message', typeOf(msg), JSON.stringify(msg, null, 3));
@@ -149,16 +158,15 @@ export class Worker extends events.EventEmitter {
 
 			for (var id in this.jobs) {
 				var job = this.jobs[id];
+				this._activeCount--;
 				delete this.jobs[id];
 				this.emit(lib.TASK_ABORT, job);
 			}
 
-			if (this.idleTimer) {
-				clearTimeout(this.idleTimer);
-			}
-		};
+			this.idleTimer.clear();
 
-		this.resetIdle();
+			this.removeAllListeners();
+		};
 	}
 
 	run(job: Job): void {
@@ -168,7 +176,8 @@ export class Worker extends events.EventEmitter {
 			return;
 		}
 		this.jobs[job.id] = job;
-		this.resetIdle();
+		this._activeCount++;
+		this.idleTimer.next();
 
 		if (this.ready) {
 			this.send(job);
@@ -194,6 +203,8 @@ export class Worker extends events.EventEmitter {
 	}
 
 	private flushWaiting(): void {
+		this.idleTimer.next();
+
 		for (var id in this.jobs) {
 			var job = this.jobs[id];
 			if (!job.send) {
@@ -208,26 +219,8 @@ export class Worker extends events.EventEmitter {
 		}
 	}
 
-	resetIdle(): void {
-		if (this.idleTimer) {
-			clearTimeout(this.idleTimer);
-		}
-		if (this.options.idleTimeout > 0) {
-			this.idleTimer = setTimeout(() => {
-				if (this.activeCount === 0) {
-					this.status('idle timeout');
-					this.kill();
-				}
-			}, this.options.idleTimeout);
-		}
-	}
-
 	get activeCount(): number {
-		var num = 0;
-		for (var name in this.jobs) {
-			num++;
-		}
-		return num;
+		return this._activeCount;
 	}
 
 	toString(): string {

@@ -2,9 +2,6 @@
 
 'use strict';
 
-declare function setTimeout(callback: (...args: any[]) => void, ms: number, ...args: any[]): NodeJS.Timer;
-declare function clearTimeout(timeoutId: NodeJS.Timer): void;
-
 import os = require('os');
 import path = require('path');
 import events = require('events');
@@ -47,7 +44,6 @@ class Pool extends events.EventEmitter implements IPool {
 		this.options.concurrent = lib.optValue(this.options.concurrent, os.cpus().length);
 		this.options.paralel = lib.optValue(this.options.paralel, 1);
 		this.options.attempts = lib.optValue(this.options.attempts, 3);
-		this.options.timeout = lib.optValue(this.options.timeout, 0);
 		this.options.idleTimeout = lib.optValue(this.options.idleTimeout, 500);
 		this.options.log = lib.optValue(this.options.log, false);
 		this.options.emit = lib.optValue(this.options.emit, false || this.options.log);
@@ -106,17 +102,21 @@ class Pool extends events.EventEmitter implements IPool {
 
 	private procQueue(): void {
 		while (this.queuedJobs.length > 0) {
-			var best: Worker;
+			var best: Worker = null;
 			var count = 0;
 			for (var id in this.workers) {
 				var worker = this.workers[id];
 				count++;
 				if (worker.activeCount < this.options.paralel) {
-					if (!best || worker.activeCount < best.activeCount) {
+					if (!best) {
+						best = worker;
+					}
+					else if (worker.activeCount < best.activeCount) {
 						best = worker;
 					}
 				}
 			}
+
 			if (count < this.options.concurrent && (!best || best.activeCount > 0)) {
 				best = this.spawnWorker();
 			}
@@ -144,7 +144,6 @@ class Pool extends events.EventEmitter implements IPool {
 
 			this.removeWorker(worker);
 			worker.kill();
-			this.checkQueue();
 		});
 
 		worker.on(lib.TASK_RESULT, (job: Job) => {

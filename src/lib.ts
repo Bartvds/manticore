@@ -2,6 +2,9 @@
 
 'use strict';
 
+declare function setTimeout(callback: (...args: any[]) => void, ms: number, ...args: any[]): NodeJS.Timer;
+declare function clearTimeout(timeoutId: NodeJS.Timer): void;
+
 import assertMod = require('assert');
 import typeOf = require('type-detect');
 
@@ -22,7 +25,6 @@ export interface IOptions {
 	concurrent?: number;
 	paralel?: number;
 	attempts?: number;
-	timeout?: number;
 	idleTimeout?: number;
 	log?: boolean;
 	emit?: boolean;
@@ -58,8 +60,78 @@ export function assertType(value: any, type: string, label?: string): void {
 }
 
 export function optValue<T>(value: T, alt: T): T {
-	if (typeof value !== 'undefined') {
+	if (typeOf(value) !== 'undefined') {
 		return value;
 	}
 	return alt;
+}
+
+var timerIDI = 0;
+var baseTime = Date.now();
+
+export class BumpTimeout {
+	// setTimeout that gets reaised a lot so limit resets on bumps
+
+	private _end: number = 0;
+	private _delay: number = 0;
+
+	private _call: () => void;
+	private _check: () => void;
+
+	private _timer: NodeJS.Timer = null;
+	private _unRef: boolean;
+
+	private _bumped: number = Date.now();
+	private _prev: number = Date.now();
+	private _id: number = timerIDI++;
+
+	constructor(delay: number, call: () => void, unRef: boolean = true) {
+		this._delay = delay;
+		this._call = call;
+		this._unRef = unRef;
+		this._check = () => {
+			var now = Date.now();
+			if (now < this._end) {
+				clearTimeout(this._timer);
+				this._timer = setTimeout(this._check, this._end - now);
+				if (this._unRef) {
+					this._timer.unref();
+				}
+			}
+			else {
+				// console.log('timeout #%s call %s %s', this._id, (now - this._prev), this._delay);
+				this._call();
+				this._prev = now;
+				this._end = 0;
+			}
+		};
+
+		this.next();
+	}
+
+	next(): void {
+		var now = Date.now();
+		var end = now + this._delay;
+
+		// console.log('timeout #%s next %s %s', this._id, (now - this._bumped), this._delay);
+
+		this._bumped = now;
+
+		if (end < this._end || this._end === 0) {
+			clearTimeout(this._timer);
+
+			this._timer = setTimeout(this._check, this._delay);
+			this._timer.unref();
+			if (this._unRef) {
+				this._timer.unref();
+			}
+		}
+		this._end = end;
+	}
+
+	clear(): void {
+		clearTimeout(this._timer);
+		this._timer = null;
+		this._end = 0;
+	}
 }

@@ -2,9 +2,6 @@
 
 'use strict';
 
-declare function setTimeout(callback: (...args: any[]) => void, ms: number, ...args: any[]): NodeJS.Timer;
-declare function clearTimeout(timeoutId: NodeJS.Timer): void;
-
 import fs = require('fs');
 import path = require('path');
 import util = require('util');
