@@ -71,7 +71,7 @@ class Pool extends events.EventEmitter implements IPool {
 			});
 			this.queuedJobs.push(job);
 
-			this.status('add', job);
+			this.status(job, 'added');
 
 			this.checkQueue();
 		});
@@ -111,13 +111,13 @@ class Pool extends events.EventEmitter implements IPool {
 			for (var id in this.workers) {
 				var worker = this.workers[id];
 				count++;
-				if (worker.active < this.options.paralel) {
-					if (!best || worker.active < best.active) {
+				if (worker.activeCount < this.options.paralel) {
+					if (!best || worker.activeCount < best.activeCount) {
 						best = worker;
 					}
 				}
 			}
-			if (count < this.options.concurrent && (!best || best.active > 0)) {
+			if (count < this.options.concurrent && (!best || best.activeCount > 0)) {
 				best = this.spawnWorker();
 			}
 
@@ -140,7 +140,7 @@ class Pool extends events.EventEmitter implements IPool {
 		this.workers[worker.id] = worker;
 
 		worker.on(lib.ERROR, (err: Error) => {
-			this.status('pool error', worker, err);
+			this.status(worker, 'pool error', err);
 
 			this.removeWorker(worker);
 			worker.kill();
@@ -148,7 +148,6 @@ class Pool extends events.EventEmitter implements IPool {
 		});
 
 		worker.on(lib.TASK_RESULT, (job: Job) => {
-			this.status('job complete', worker, job);
 			this.checkQueue();
 		});
 
@@ -156,17 +155,17 @@ class Pool extends events.EventEmitter implements IPool {
 			if (job.attempts < this.options.attempts) {
 				job.attempts++;
 				this.queuedJobs.push(job);
-				this.status('job requeue', worker, job, job.attempts + ' of ' + this.options.attempts);
+				this.status(worker, 'requeue', job, job.attempts + ' of ' + this.options.attempts);
 			}
 			else {
-				this.status('job abort', worker, job);
+				this.status(worker, 'abort', job);
 				job.callback(new Error('job failed ' + job.attempts + ' attempts'), null);
 			}
 			this.checkQueue();
 		});
 
 		worker.on(lib.WORKER_DOWN, () => {
-			this.status('worker down', worker);
+			this.status(worker, 'down');
 			this.removeWorker(worker);
 			this.checkQueue();
 		});
@@ -175,7 +174,7 @@ class Pool extends events.EventEmitter implements IPool {
 			this.emit(lib.STATUS, msg);
 		});
 
-		this.status('spawn worker', '<' + this.workerCount + '/' + this.options.concurrent + '>', worker);
+		this.status(worker, 'spawn <' + this.workerCount + '/' + this.options.concurrent + '>');
 
 		return worker;
 	}

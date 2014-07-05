@@ -3,7 +3,7 @@
 'use strict';
 
 import Manticore = require('manticore');
-import Promise = require('es6-promises');
+import Promise = require('bluebird');
 
 var mc: typeof Manticore = require('../../dist/index');
 
@@ -30,7 +30,7 @@ export function sumNodeAsync(params: number[], callback: (err: Error, result: an
 		callback(null, params.reduce((memo: number, value: number) => {
 			return memo + value;
 		}, 0));
-	}, 500);
+	}, 50);
 }
 
 export function sumPromise(params: number[]): any {
@@ -58,7 +58,7 @@ export function errorNodeSync(params: number[], callback: (err: Error, result: a
 export function errorNodeAsync(params: number[], callback: (err: Error, result: any) => void): void {
 	setTimeout(() => {
 		callback(new Error('foo'), null);
-	}, 500);
+	}, 50);
 }
 
 export function errorPromise(params: number[]): any {

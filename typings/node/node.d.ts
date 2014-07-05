@@ -112,6 +112,8 @@ declare module NodeJS {
         write(buffer: Buffer, cb?: Function): boolean;
         write(str: any, cb?: Function): boolean;
         write(str: string, encoding?: string, cb?: Function): boolean;
+        pipe<T extends NodeJS.WritableStream>(destination: T, options?: { end?: boolean; }): T;
+        unpipe<T extends NodeJS.WritableStream>(destination?: T): void;
         end(): void;
         end(buffer: Buffer, cb?: Function): void;
         end(str: string, cb?: Function): void;
@@ -1142,6 +1144,8 @@ declare module "stream" {
         _write(data: string, encoding: string, callback: Function): void;
         write(str: any, cb?: Function): boolean;
         write(str: string, encoding?: string, cb?: Function): boolean;
+        pipe<T extends NodeJS.WritableStream>(destination: T, options?: { end?: boolean; }): T;
+        unpipe<T extends NodeJS.WritableStream>(destination?: T): void;
         end(): void;
         end(buffer: Buffer, cb?: Function): void;
         end(str: string, cb?: Function): void;

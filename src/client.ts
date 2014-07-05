@@ -2,8 +2,6 @@
 
 'use strict';
 
-console.log('worker module read');
-
 declare function setTimeout(callback: (...args: any[]) => void, ms: number, ...args: any[]): NodeJS.Timer;
 declare function clearTimeout(timeoutId: NodeJS.Timer): void;
 
@@ -22,8 +20,13 @@ var state = {
 	id: 'worker.' + process.pid,
 	tasks: <ITaskDict> Object.create(null),
 	active: <IHandleDict> Object.create(null),
+	closing: false,
 	isInit: false
 };
+
+var read: NodeJS.ReadableStream = null;
+var write: NodeJS.WritableStream = null;
+var objects: NodeJS.ReadWriteStream = null;
 
 export interface ITaskFunc {
 	(params: any, callback: lib.IResultCallback): any;
@@ -44,97 +47,92 @@ interface IHandleDict {
 	[id: string]: IHandle;
 }
 
-var read = null;
-var write = null;
-
-function testFS(num: number) {
-	console.log('test fs ' + num);
-	try {
-		console.log(fs.fstatSync(num));
-	}
-	catch (e) {
-		console.log(e);
-	}
-}
-
 function init(): void {
-	if (state.isInit) {
+	if (state.isInit || state.closing) {
 		return;
 	}
 	state.isInit = true;
-
-	console.log('init ' + state.id);
-
+	var fdI = 0;
 	var fdCheck = setInterval(() => {
 		try {
 			fs.fstatSync(lib.WORK_TO_CLIENT);
 			fs.fstatSync(lib.CLIENT_TO_WORK);
 		}
 		catch (e) {
-			console.log('skip fd');
+			if (fdI++ > 10) {
+				bail('cannot locate file descriptors');
+			}
 			return;
 		}
-		console.log('got fd');
 
 		clearInterval(fdCheck);
 
 		read = fs.createReadStream(null, {fd: lib.WORK_TO_CLIENT});
 
-		var objects = read.pipe(JSONStream.parse(true));
+		read.on('error', function (err) {
+			bail('client intput stream errored', err);
+		});
+
+		read.on('close', () => {
+			bail('client intput stream unexpectedly closed');
+		});
+
+		read.on('end', () => {
+			bail('client intput stream unexpectedly ended');
+		});
+
+		write = JSONStream.stringify(false);
+		write.pipe(through2()).pipe(fs.createWriteStream(null, {fd: lib.CLIENT_TO_WORK}));
+
+		write.on('error', function (err) {
+			state.closing = true;
+			bail('object input stream errored', err);
+		});
+
+		objects = read.pipe(JSONStream.parse(true));
 
 		objects.on('data', (msg) => {
-			console.log('client objects data');
-			console.log(msg);
 			if (msg.type === lib.TASK_RUN) {
 				process.nextTick(() => {
 					runFunc(<lib.IStartMessage> msg);
 				});
 			}
 			else {
-				console.log('client unknown data');
-				console.log(msg);
+				console.error('client unknown data');
+				console.error(msg);
 			}
 		});
 
-		read.on('data', function (data) {
-			console.log('r data');
-			console.log(String(data));
+		objects.on('error', function (err) {
+			state.closing = true;
+			bail('object input stream errored', err);
 		});
-
-		read.on('error', function (err) {
-			console.error(err);
-			console.error(err);
-			console.error(err.stack);
-		});
-
-		read.on('close', (msg) => {
-			console.error('r closed read stream');
-		});
-
-		read.on('end', (msg) => {
-			console.error('r ended read stream');
-		});
-
-		write = JSONStream.stringify(false);
-		write.pipe(through2()).pipe(fs.createWriteStream(null, {fd: lib.CLIENT_TO_WORK}));
 
 		process.send({type: lib.WORKER_READY});
 
 	}, 10);
 
 	process.on('uncaughtException', (err: any) => {
-		abortAll();
-		console.error(err.stack);
-		// rethrow
-		throw err;
+		bail('uncaughtException', err);
 	});
 }
 
+function bail(message: any, ...messages: any[]): void {
+	console.error.apply(console, arguments);
+	this.abortAll();
+	read.removeAllListeners();
+	write.removeAllListeners();
+	objects.removeAllListeners();
+	process.exit(1);
+}
+
 function abortAll(): void {
-	for (var id in state.active) {
-		var info = state.active[id];
-		info.res.type = lib.TASK_ABORT;
-		info.send();
+	if (!state.closing) {
+		for (var id in state.active) {
+			var info = state.active[id];
+			info.res.type = lib.TASK_ABORT;
+			info.send();
+		}
 	}
 }
 
@@ -212,9 +210,6 @@ function runFunc(msg: lib.IStartMessage): void {
 				}
 				res.duration = Date.now() - start;
 				hasSent = true;
-				// process.send(res, null);
-				console.log('client send');
-				console.log(res);
 				write.write(res);
 			}
 		}

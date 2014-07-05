@@ -10,6 +10,7 @@ import path = require('path');
 import events = require('events');
 import assertMod = require('assert');
 import child_process = require('child_process');
+import typeOf = require('type-detect');
 
 var through2: any = require('through2');
 
@@ -46,7 +47,6 @@ interface JobDict {
 
 export class Worker extends events.EventEmitter {
 	id: string;
-	active: number = 0;
 
 	private options: lib.IOptions;
 	private child: child_process.ChildProcess;
@@ -79,19 +79,17 @@ export class Worker extends events.EventEmitter {
 
 		this.read = this.child.stdio[lib.CLIENT_TO_WORK].pipe(JSONStream.parse(true));
 		this.read.on('data', (msg) => {
-			console.log('worker read data');
-			console.log(msg);
-
 			if (msg.type === lib.TASK_RESULT) {
 				if (msg.id in this.jobs) {
 					var job = this.jobs[msg.id];
-					this.active--;
 					delete this.jobs[msg.id];
 
+					this.status('completed', job);
+
 					job.callback(msg.error, msg.result);
+
 					this.emit(lib.TASK_RESULT, job);
 					this.resetIdle();
-					return;
 				}
 			}
 		});
@@ -110,15 +108,14 @@ export class Worker extends events.EventEmitter {
 
 		var onMessage = (msg: lib.IResultMessage) => {
 			if (msg.type === lib.WORKER_READY) {
-				console.log('ready message ' + this);
+				this.status('ready');
 				this.ready = true;
 
 				this.flushWaiting();
 				this.resetIdle();
 			}
 			else {
-				console.log('worker message');
-				console.log(msg);
+				this.status('unknown message', typeOf(msg), JSON.stringify(msg, null, 3));
 			}
 		};
 		var onError = (error: any) => {
@@ -135,9 +132,13 @@ export class Worker extends events.EventEmitter {
 		this.child.on('close', onClose);
 
 		this.kill = () => {
-			console.log('kill ' + this);
+			this.status('kill');
+			this.write.removeAllListeners();
+			this.read.removeAllListeners();
 
 			if (this.child) {
+				this.child.stdio[lib.WORK_TO_CLIENT].removeAllListeners();
+				this.child.stdio[lib.CLIENT_TO_WORK].removeAllListeners();
 				this.child.removeAllListeners();
 				this.child.kill('SIGKILL');
 				this.child = null;
@@ -148,7 +149,6 @@ export class Worker extends events.EventEmitter {
 
 			for (var id in this.jobs) {
 				var job = this.jobs[id];
-				this.active--;
 				delete this.jobs[id];
 				this.emit(lib.TASK_ABORT, job);
 			}
@@ -168,7 +168,6 @@ export class Worker extends events.EventEmitter {
 			return;
 		}
 		this.jobs[job.id] = job;
-		this.active++;
 		this.resetIdle();
 
 		if (this.ready) {
@@ -180,7 +179,7 @@ export class Worker extends events.EventEmitter {
 		if (job.send) {
 			return;
 		}
-		this.status('job start', job);
+		this.status('started', job);
 
 		var msg: lib.IStartMessage = {
 			type: lib.TASK_RUN,
@@ -195,8 +194,6 @@ export class Worker extends events.EventEmitter {
 	}
 
 	private flushWaiting(): void {
-		this.status('flush waiting');
-
 		for (var id in this.jobs) {
 			var job = this.jobs[id];
 			if (!job.send) {
@@ -207,7 +204,7 @@ export class Worker extends events.EventEmitter {
 
 	private status(...message: any[]): void {
 		if (this.options.emit) {
-			this.emit(lib.STATUS, 'worker ' + this + '; ' + message.join('; '));
+			this.emit(lib.STATUS, this + '; ' + message.join('; '));
 		}
 	}
 
@@ -217,7 +214,7 @@ export class Worker extends events.EventEmitter {
 		}
 		if (this.options.idleTimeout > 0) {
 			this.idleTimer = setTimeout(() => {
-				if (this.active === 0) {
+				if (this.activeCount === 0) {
 					this.status('idle timeout');
 					this.kill();
 				}
@@ -225,7 +222,15 @@ export class Worker extends events.EventEmitter {
 		}
 	}
 
+	get activeCount(): number {
+		var num = 0;
+		for (var name in this.jobs) {
+			num++;
+		}
+		return num;
+	}
+
 	toString(): string {
-		return this.id + ' <' + (this.child ? (this.active + '/' + this.options.paralel) : 'killed') + '>';
+		return this.id + ' <' + (this.child ? (this.activeCount + '/' + this.options.paralel) : 'killed') + '>';
 	}
 }
