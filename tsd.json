@@ -22,6 +22,9 @@
 		},
 		"JSONStream/JSONStream.d.ts": {
 			"commit": "b34cae36a7c85a06c720e66de0386375064a8662"
+		},
+		"bluebird/bluebird.d.ts": {
+			"commit": "b34cae36a7c85a06c720e66de0386375064a8662"
 		}
 	}
 }

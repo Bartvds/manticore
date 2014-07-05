@@ -7,7 +7,7 @@ import util = require('util');
 import child_process = require('child_process');
 
 import Manticore = require('manticore');
-import Promise = require('es6-promises');
+import Promise = require('bluebird');
 
 import chai = require('chai');
 var assert = chai.assert;

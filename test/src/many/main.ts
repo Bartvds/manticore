@@ -3,7 +3,7 @@
 'use strict';
 
 import Manticore = require('manticore');
-import Promise = require('es6-promises');
+import Promise = require('bluebird');
 import chai = require('chai');
 var assert = chai.assert;
 

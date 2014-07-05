@@ -39,7 +39,10 @@ declare module '__manticore/lib' {
     export var TASK_RESULT: string;
     export var TASK_ABORT: string;
     export var WORKER_DOWN: string;
+    export var WORKER_READY: string;
     export var ERROR: string;
+    export var WORK_TO_CLIENT: number;
+    export var CLIENT_TO_WORK: number;
     export var STATUS: string;
     export interface IOptions {
         modulePath: string;

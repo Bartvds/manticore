@@ -297,7 +297,7 @@ declare module "http" {
         write(buffer: Buffer, cb?: Function): boolean;
         write(str: string, cb?: Function): boolean;
         write(str: string, encoding?: string, cb?: Function): boolean;
-        write(str: string, encoding?: string, fd?: string): boolean;
+        write(str: string, encoding?: string, fd?: number): boolean;
 
         writeContinue(): void;
         writeHead(statusCode: number, reasonPhrase?: string, headers?: any): void;
@@ -323,7 +323,7 @@ declare module "http" {
         write(buffer: Buffer, cb?: Function): boolean;
         write(str: string, cb?: Function): boolean;
         write(str: string, encoding?: string, cb?: Function): boolean;
-        write(str: string, encoding?: string, fd?: string): boolean;
+        write(str: string, encoding?: string, fd?: number): boolean;
 
         write(chunk: any, encoding?: string): void;
         abort(): void;
@@ -605,6 +605,7 @@ declare module "child_process" {
         stdin:  stream.Writable;
         stdout: stream.Readable;
         stderr: stream.Readable;
+        stdio: stream.Duplex[];
         pid: number;
         kill(signal?: string): void;
         send(message: any, sendHandle: any): void;
@@ -704,7 +705,7 @@ declare module "net" {
         write(buffer: Buffer, cb?: Function): boolean;
         write(str: string, cb?: Function): boolean;
         write(str: string, encoding?: string, cb?: Function): boolean;
-        write(str: string, encoding?: string, fd?: string): boolean;
+        write(str: string, encoding?: string, fd?: number): boolean;
 
         connect(port: number, host?: string, connectionListener?: Function): void;
         connect(path: string, connectionListener?: Function): void;
@@ -732,7 +733,7 @@ declare module "net" {
     }
 
     export var Socket: {
-        new (options?: { fd?: string; type?: string; allowHalfOpen?: boolean; }): Socket;
+        new (options?: { fd?: number; type?: string; allowHalfOpen?: boolean; }): Socket;
     };
 
     export interface Server extends Socket {
@@ -909,14 +910,14 @@ declare module "fs" {
     export function createReadStream(path: string, options?: {
         flags?: string;
         encoding?: string;
-        fd?: string;
+        fd?: number;
         mode?: number;
         bufferSize?: number;
     }): ReadStream;
     export function createReadStream(path: string, options?: {
         flags?: string;
         encoding?: string;
-        fd?: string;
+        fd?: number;
         mode?: string;
         bufferSize?: number;
     }): ReadStream;

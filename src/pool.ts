@@ -10,7 +10,7 @@ import path = require('path');
 import events = require('events');
 import assertMod = require('assert');
 
-import Promise = require('es6-promises');
+import Promise = require('bluebird');
 import JSONStream = require('JSONStream');
 
 import lib = require('./lib');
@@ -29,10 +29,14 @@ export function createPool(options: lib.IOptions): IPool {
 	return new Pool(options);
 }
 
+interface WorkerDict {
+	[id: string]: Worker;
+}
+
 class Pool extends events.EventEmitter implements IPool {
 	private options: lib.IOptions;
 	private queuedJobs: Job[] = [];
-	private workers: Worker[] = [];
+	private workers: WorkerDict = Object.create(null);
 	private checksNext: boolean = false;
 
 	constructor(options: lib.IOptions) {
@@ -56,7 +60,7 @@ class Pool extends events.EventEmitter implements IPool {
 	}
 
 	run(task: string, params: any): Promise<any> {
-		return new Promise((resolve: (res: any) => void, reject: (err: Error) => void) => {
+		return new Promise<any>((resolve, reject) => {
 			var job = new Job(task, params, (err, res) => {
 				if (err) {
 					reject(err);
@@ -103,19 +107,20 @@ class Pool extends events.EventEmitter implements IPool {
 	private procQueue(): void {
 		while (this.queuedJobs.length > 0) {
 			var best: Worker;
-			for (var i = 0, ii = this.workers.length; i < ii; i++) {
-				var worker = this.workers[i];
+			var count = 0;
+			for (var id in this.workers) {
+				var worker = this.workers[id];
+				count++;
 				if (worker.active < this.options.paralel) {
 					if (!best || worker.active < best.active) {
 						best = worker;
 					}
 				}
 			}
-			if (this.workers.length < this.options.concurrent) {
-				if (!best || best.active > 0) {
-					best = this.spawnWorker();
-				}
+			if (count < this.options.concurrent && (!best || best.active > 0)) {
+				best = this.spawnWorker();
 			}
+
 			if (best) {
 				best.run(this.queuedJobs.shift());
 			}
@@ -126,14 +131,13 @@ class Pool extends events.EventEmitter implements IPool {
 	}
 
 	private removeWorker(worker: Worker): void {
-		var i = this.workers.indexOf(worker);
-		if (i > -1) {
-			this.workers.splice(i, 1);
-		}
+		delete this.workers[worker.id];
 	}
 
 	private spawnWorker(): Worker {
 		var worker = new Worker(this.options);
+
+		this.workers[worker.id] = worker;
 
 		worker.on(lib.ERROR, (err: Error) => {
 			this.status('pool error', worker, err);
@@ -167,14 +171,20 @@ class Pool extends events.EventEmitter implements IPool {
 			this.checkQueue();
 		});
 
-		worker.on(lib.STATUS, (args: any[]) => {
-			this.status.apply(this, args);
+		worker.on(lib.STATUS, (msg: any) => {
+			this.emit(lib.STATUS, msg);
 		});
 
-		this.workers.push(worker);
-
-		this.status('spawn worker', this.workers.length + ' of ' + this.options.concurrent, worker);
+		this.status('spawn worker', '<' + this.workerCount + '/' + this.options.concurrent + '>', worker);
 
 		return worker;
+	}
+
+	get workerCount(): number {
+		var num = 0;
+		for (var id in this.workers) {
+			num++;
+		}
+		return num;
 	}
 }

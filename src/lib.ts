@@ -9,7 +9,11 @@ export var TASK_RUN: string = 'task_run';
 export var TASK_RESULT: string = 'task_result';
 export var TASK_ABORT: string = 'task_abort';
 export var WORKER_DOWN: string = 'worker_down';
+export var WORKER_READY: string = 'worker_ready';
 export var ERROR: string = 'error';
+
+export var WORK_TO_CLIENT: number = 3;
+export var CLIENT_TO_WORK: number = 4;
 
 export var STATUS: string = 'status';
 

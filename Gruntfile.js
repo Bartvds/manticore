@@ -10,6 +10,7 @@ module.exports = function (grunt) {
 	grunt.loadNpmTasks('grunt-mocha-test');
 	grunt.loadNpmTasks('grunt-contrib-jshint');
 	grunt.loadNpmTasks('grunt-contrib-clean');
+	grunt.loadNpmTasks('grunt-shell');
 
 	grunt.initConfig({
 		pkg: grunt.file.readJSON('package.json'),
@@ -59,8 +60,7 @@ module.exports = function (grunt) {
 			},
 			build: {
 				options: {
-					declaration: true,
-					noImplicitAny: true
+					declaration: true
 				},
 				src: ['src/**/*.ts'],
 				outDir: 'dist/'
@@ -92,6 +92,14 @@ module.exports = function (grunt) {
 			},
 			all: {
 				src: 'test/tmp/*.test.js'
+			}
+		},
+		shell: {
+			scratch_main: {
+				options: {
+					stderr: false
+				},
+				command: 'node scratch/main.js'
 			}
 		}
 	});
@@ -128,6 +136,12 @@ module.exports = function (grunt) {
 	grunt.registerTask('dev', [
 		'ts:test',
 		'mochaTest:all',
+	]);
+
+	grunt.registerTask('edit_01', [
+		'compile',
+		'sweep',
+		'shell:scratch_main'
 	]);
 
 	grunt.registerTask('prepublish', [
