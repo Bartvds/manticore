@@ -15,12 +15,12 @@ The core concept is you got some code in a function that does some heavy work an
 
 ## Why yet another worker module?
 
-The worker modules I found on npm all have their problems: they either lack functionality, require persistence dependencies, have strange API's or make all kinds of weird assumptions that get in the way.
+The worker modules I found on npm all have their problems: they either lack functionality, use external dependencies or make all kinds of weird assumptions that get in the way.
 
 Instead of trying to wrangle my app to fit those unsatisfactory modules I build Manticore to be simple and effective with the features you need to get big things done at hyperspeed without jumping through crazy hoops.
 
 
-## So how do I use it?
+## How to use?
 
 You put your code in a function that accepts a single parameter, then add a bunch of them in a worker module. In this module you register the functions to expose them as tasks.
 
@@ -28,28 +28,29 @@ In your main app you setup the pool for that module and execute the methods via 
 
 You can use a function that returns a value synchronously, or go asynchronous and either use the node.js-style callback or return a Promise. 
 
-By default each worker works on only one job at a time, but there is an option to allow workers to process multiple jobs simultaneously, which allows a extra boost for IO-bound tasks by keeping the node threads active during IO (of course assuming you use async IO).
+By default each worker works on only one job at a time, but there is an option to allow workers to process multiple jobs simultaneously that allows a extra boost for IO-bound tasks (of course assuming you use async IO).
 
 
-## What do I get?
+## Return value
 
 The return value of the pool is always a ES6-style Promise so you easily use fancy logic like Promise.all() or Promise.race().
 
-For some next level setups you can leverage Promise-glue helpers from modules like Q, Bluebird etc. To get creative and pass the Promises into more exotic modules like React, Baconjs, Lazy.js, Highland and all the cool utility modules with Promise support.
+For some next level setups you can leverage Promise-glue helpers from modules like Q, Bluebird etc. To get creative and pass the Promises into more exotic modules like React, Baconjs, Lazy.js, Highland and all the other cool utility modules with Promise support.
 
-Keep in mind the parameter object and return value are serialised between different node forks using so you cannot pass functions or prototype based objects.
+Keep in mind the parameter object and return value are serialised so you cannot pass functions or prototype based objects, only simple JSON-like data.
 
 
-## What do you use this for?
+## Notes
 
-All kinds of stuff; first use-case was bulk operations with various TypeScript related modules (processing 500+ file-sets). The TypeScript compiler is a huge JS file, fully synchronous and just very slow because it does so much work. 
+- Returns a ES6 Promise.
+- Transfers data between threads using pipes (eg: non-blocking).
+- Data gets serialised so only primitive JSON-like data can be transferred.
+- Makes sure you configure concurrent/paralel to suit your app for best performance
 
-So you'd want to use all CPU cores you got and crunch different file-sets simultaneously (one compiler per core works nicely). I used to run single-use sub-processes in parallel for every file-set, which was already a lot faster compared with serial execution on a single core. 
+## Todo
 
-But the start-up time for every spawn became annoying: node takes time to initialise and then it still needs to compile the huge JavaScript file of the TS compiler. Using Manticore you can easily rig something to keep the worker processes alive for re-use and take maximum profit from V8's hot-code JIT.  
-
-This module is also handy for doing heavy data crunching like processing images in JavaScript.
-
+- Swap JSON serialisation for something that supports Buffers.
+- Separate settings per function.
 
 ## Usage
 
@@ -163,7 +164,7 @@ That's it! :+1:
 ````ts
 var pool = mc.createPool({
 	// path to the worker module. pro-tip: use require.resolve()
-	modulePath: string;
+	worker: string;
 	
 	// maximum amount of worker processes
 	// - defaults: require('os').cpus().length
@@ -173,7 +174,7 @@ var pool = mc.createPool({
 	// set this to a higher value if your jobs are async and IO-bound
 	// - default: 1
 	paralel?: number;
-	// maximum retries if a job (or worker) fails
+	// maximum retries if a worker fails
 	attempts?: number;
 
 	// worker idle timeout in miliseconds, shuts down workers that are idling
@@ -186,7 +187,8 @@ var pool = mc.createPool({
 });
 ````
 
-## TypeScript
+
+## Development
 
 Manticore is written in TypeScript and compiled with Grunt. 
 
@@ -204,15 +206,21 @@ $ npm install
 Build and run tests using [grunt](http://gruntjs.com):
 
 ````bash
-$ npm test
+$ grunt test
 ````
 
 See the `Gruntfile.js` for additional commands.
 
 
+## Contributions
+
+They are welcome but please discuss in [the issues](https://github.com/Bartvds/manticore/issues) before you commit to large changes. If you send a PR make sure you code is idiomatic and linted.
+
+
 ## History
 
-- 0.0.1 - First release
+- 0.2.0 - Transfer data over non-blocking pipes, renamed `modulePath` option to `worker`.
+- 0.1.0 - First release.
 
 
 ## License

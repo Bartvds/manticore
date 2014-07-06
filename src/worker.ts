@@ -72,7 +72,7 @@ export class Worker extends events.EventEmitter {
 		});
 
 		var args: any[] = [
-			this.options.modulePath
+			this.options.worker
 		];
 		var opts = {
 			cwd: process.cwd(),

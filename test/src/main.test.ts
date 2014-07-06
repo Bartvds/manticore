@@ -38,7 +38,7 @@ function testMantiSub(main: string) {
 describe('core', () => {
 	it('assertion', () => {
 		var pool = mc.createPool({
-			modulePath: require.resolve('./worker')
+			worker: require.resolve('./worker')
 		});
 		return pool.run('assertionError', 123).then((res) => {
 			assert.fail('expected to fail');
@@ -50,7 +50,7 @@ describe('core', () => {
 	});
 	it('anon', () => {
 		var pool = mc.createPool({
-			modulePath: require.resolve('./worker')
+			worker: require.resolve('./worker')
 		});
 		return pool.run('anon', 123).then((res) => {
 			assert.strictEqual(123, res);
@@ -58,7 +58,7 @@ describe('core', () => {
 	});
 	it('named', () => {
 		var pool = mc.createPool({
-			modulePath: require.resolve('./worker')
+			worker: require.resolve('./worker')
 		});
 		return pool.run('named', 123).then((res) => {
 			assert.strictEqual(123, res);
@@ -66,7 +66,7 @@ describe('core', () => {
 	});
 	it('array', () => {
 		var pool = mc.createPool({
-			modulePath: require.resolve('./worker')
+			worker: require.resolve('./worker')
 		});
 		return Promise.all([
 			pool.run('arrayA', 123),
@@ -77,7 +77,7 @@ describe('core', () => {
 	});
 	it('curried', () => {
 		var pool = mc.createPool({
-			modulePath: require.resolve('./worker')
+			worker: require.resolve('./worker')
 		});
 		var curried = pool.curried('named');
 		return curried(123).then((res) => {
@@ -109,7 +109,7 @@ describe('resolution', () => {
 	function testMethod(method: string) {
 		it(method, () => {
 			var pool = mc.createPool({
-				modulePath: require.resolve('./worker'),
+				worker: require.resolve('./worker'),
 				concurrent: 2
 			});
 
@@ -131,7 +131,7 @@ describe('errors', () => {
 	function testError(method: string) {
 		it(method, () => {
 			var pool = mc.createPool({
-				modulePath: require.resolve('./worker'),
+				worker: require.resolve('./worker'),
 				concurrent: 2
 			});
 

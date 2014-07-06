@@ -40,7 +40,7 @@ class Pool extends events.EventEmitter implements IPool {
 		super();
 
 		this.options = options;
-		this.options.modulePath = path.resolve(this.options.modulePath);
+		this.options.worker = path.resolve(this.options.worker);
 		this.options.concurrent = lib.optValue(this.options.concurrent, os.cpus().length);
 		this.options.paralel = lib.optValue(this.options.paralel, 1);
 		this.options.attempts = lib.optValue(this.options.attempts, 3);

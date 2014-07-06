@@ -21,7 +21,7 @@ export var CLIENT_TO_WORK: number = 4;
 export var STATUS: string = 'status';
 
 export interface IOptions {
-	modulePath: string;
+	worker: string;
 	concurrent?: number;
 	paralel?: number;
 	attempts?: number;
