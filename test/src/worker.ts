@@ -30,7 +30,7 @@ export function sumNodeAsync(params: number[], callback: (err: Error, result: an
 		callback(null, params.reduce((memo: number, value: number) => {
 			return memo + value;
 		}, 0));
-	}, 50);
+	}, 10);
 }
 
 export function sumPromise(params: number[]): any {

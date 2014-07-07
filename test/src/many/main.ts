@@ -15,6 +15,7 @@ var pool = mc.createPool({
 	concurrent: 2
 });
 
+
 Promise.all([
 	pool.run('sumNodeAsync', [1, 2]),
 	pool.run('sumNodeAsync', [5, 5]),
@@ -23,6 +24,7 @@ Promise.all([
 
 ]).then((res: any[]) => {
 	assert.deepEqual(res, [3, 10, 60, 45]);
+
 	// process.exit(0);
 }).then((err) => {
 	if (err) {

@@ -84,6 +84,23 @@ describe('core', () => {
 			assert.strictEqual(123, res);
 		});
 	});
+
+	it('many', () => {
+		var pool = mc.createPool({
+			worker: require.resolve('./worker'),
+			concurrent: 2,
+			paralel: 20
+		});
+		var work = [];
+		for (var i = 0; i < 500; i++) {
+			var nums = [];
+			for (var j = i; j < i + 5000; j++) {
+				nums.push(j);
+			}
+			work.push(pool.run('sumNodeAsync', nums));
+		}
+		return Promise.all(work);
+	});
 });
 
 describe('resolution', () => {
