@@ -15,6 +15,9 @@ export import createPool = pool.createPool;
 // helpers
 export import assertProp = lib.assertProp;
 export import assertType = lib.assertType;
+
+// types
 export import IOptions = lib.IOptions;
+export import IPool = pool.IPool;
 
 [client, pool, lib];

@@ -1,6 +1,6 @@
 {
   "name": "manticore",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Mythical multi-process worker pool",
   "keywords": [
     "multiprocess",

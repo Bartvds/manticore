@@ -10,6 +10,7 @@ declare module 'manticore' {
     export import assertProp = lib.assertProp;
     export import assertType = lib.assertType;
     export import IOptions = lib.IOptions;
+    export import IPool = pool.IPool;
 }
 
 declare module '__manticore/client' {
@@ -29,7 +30,6 @@ declare module '__manticore/pool' {
     export interface IPool extends NodeJS.EventEmitter {
         run(task: string, params: any): Promise<any>;
         curried(task: string): (params: any) => Promise<any>;
-        shutdown(): void;
     }
     export function createPool(options: lib.IOptions): IPool;
 }

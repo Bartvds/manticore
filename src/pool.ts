@@ -19,7 +19,6 @@ import Job = _worker.Job;
 export interface IPool extends NodeJS.EventEmitter {
 	run(task: string, params: any): Promise<any>;
 	curried(task: string): (params: any) => Promise<any>;
-	shutdown(): void;
 }
 
 export function createPool(options: lib.IOptions): IPool {
@@ -77,10 +76,6 @@ class Pool extends events.EventEmitter implements IPool {
 		return (params: any) => {
 			return this.run(task, params);
 		};
-	}
-
-	shutdown(): void {
-		this.status('shutdown');
 	}
 
 	private status(...message: any[]): void {
