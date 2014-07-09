@@ -116,7 +116,7 @@ function init(): void {
 
 function bail(message: any, ...messages: any[]): void {
 	console.error.apply(console, arguments);
-	this.abortAll();
+	abortAll();
 	read.removeAllListeners();
 	write.removeAllListeners();
 	objects.removeAllListeners();
@@ -207,7 +207,9 @@ function runFunc(msg: lib.IStartMessage): void {
 				}
 				res.duration = Date.now() - start;
 				hasSent = true;
-				write.write(res);
+				process.nextTick(() => {
+					write.write(res);
+				});
 			}
 		}
 	};
@@ -247,3 +249,8 @@ function runFunc(msg: lib.IStartMessage): void {
 		info.send();
 	}
 }
+
+process.on('uncaughtException', (e) => {
+	bail(e);
+	throw e;
+});

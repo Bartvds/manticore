@@ -93,6 +93,13 @@ export class Worker extends events.EventEmitter {
 					this._activeCount--;
 					delete this.jobs[msg.id];
 
+					// upfix Error
+					if (msg.error) {
+						msg.error.toString = () => {
+							return msg.message;
+						};
+					}
+
 					this.status('completed', job, Math.round(msg.duration) + 'ms');
 
 					job.callback(msg.error, msg.result);
