@@ -14,26 +14,86 @@ var assert = chai.assert;
 
 var mc: typeof Manticore = require('../../dist/index');
 
-function testMantiSub(main: string) {
-	var script = path.resolve(main);
-
-	it(path.relative(__dirname, script), (done) => {
-		var args = [script];
-		var opts = {
-			stdio: 'inherit'
-		};
-		var cp = child_process.spawn('node', args, opts);
-
-		cp.on('close', (code: number) => {
-			if (code) {
-				done(new Error('bad exit code ' + code));
-			}
-			else {
-				done();
-			}
+describe('string', () => {
+	it('simple', () => {
+		var pool = mc.createPool({
+			worker: require.resolve('./worker')
+		});
+		var value = Array(20).join('a');
+		return pool.run('echo', value).then((res) => {
+			assert.strictEqual(res, value);
 		});
 	});
-}
+	it('long', () => {
+		var pool = mc.createPool({
+			worker: require.resolve('./worker')
+		});
+		var value = Array(20).join('a');
+		return pool.run('echo', value).then((res) => {
+			assert.strictEqual(res, value);
+		});
+	});
+	it('utf8', () => {
+		var pool = mc.createPool({
+			worker: require.resolve('./worker')
+		});
+		var value = '明日がある。';
+		return pool.run('echo', value).then((res) => {
+			assert.strictEqual(res, value);
+		});
+	});
+});
+
+describe('buffer', () => {
+	it('simple', () => {
+		var pool = mc.createPool({
+			worker: require.resolve('./worker')
+		});
+		var value = new Buffer('abcdefg');
+		return pool.run('echo', value).then((res) => {
+			assert.deepEqual(res, value);
+		});
+	});
+	it('kilo', () => {
+		var pool = mc.createPool({
+			worker: require.resolve('./worker')
+		});
+		var value = new Buffer(1024);
+		return pool.run('echo', value).then((res) => {
+			assert.deepEqual(res, value);
+		});
+	});
+	it('mega', () => {
+		var pool = mc.createPool({
+			worker: require.resolve('./worker')
+		});
+		var value = new Buffer(1024 * 1024);
+		return pool.run('echo', value).then((res) => {
+			assert.deepEqual(res, value);
+		});
+	});
+});
+
+describe('json', () => {
+	it('object', () => {
+		var pool = mc.createPool({
+			worker: require.resolve('./worker')
+		});
+		var value = {a: 1, b: 2, c: [1, 2]};
+		return pool.run('echo', value).then((res) => {
+			assert.deepEqual(res, value);
+		});
+	});
+	it('array', () => {
+		var pool = mc.createPool({
+			worker: require.resolve('./worker')
+		});
+		var value = [1, 2, 3];
+		return pool.run('echo', value).then((res) => {
+			assert.deepEqual(res, value);
+		});
+	});
+});
 
 describe('core', () => {
 	it('assertion', () => {
@@ -53,7 +113,7 @@ describe('core', () => {
 			worker: require.resolve('./worker')
 		});
 		return pool.run('anon', 123).then((res) => {
-			assert.strictEqual(123, res);
+			assert.strictEqual(res, 123);
 		});
 	});
 	it('named', () => {
@@ -61,7 +121,7 @@ describe('core', () => {
 			worker: require.resolve('./worker')
 		});
 		return pool.run('named', 123).then((res) => {
-			assert.strictEqual(123, res);
+			assert.strictEqual(res, 123);
 		});
 	});
 	it('array', () => {
@@ -81,20 +141,32 @@ describe('core', () => {
 		});
 		var curried = pool.curried('named');
 		return curried(123).then((res) => {
-			assert.strictEqual(123, res);
+			assert.strictEqual(res, 123);
 		});
+	});
+
+	it('long', () => {
+		var pool = mc.createPool({
+			worker: require.resolve('./worker'),
+			concurrent: 1
+		});
+		var nums = [];
+		for (var i = 0; i < 10000; i++) {
+			nums.push(i);
+		}
+		return pool.run('sumNodeAsync', nums);
 	});
 
 	it('many', () => {
 		var pool = mc.createPool({
 			worker: require.resolve('./worker'),
 			concurrent: 2,
-			paralel: 20
+			paralel: 2
 		});
 		var work = [];
 		for (var i = 0; i < 500; i++) {
 			var nums = [];
-			for (var j = i; j < i + 5000; j++) {
+			for (var j = i; j < i + 500; j++) {
 				nums.push(j);
 			}
 			work.push(pool.run('sumNodeAsync', nums));
@@ -169,5 +241,26 @@ describe('errors', () => {
 });
 
 describe('cases', () => {
+	function testMantiSub(main: string) {
+		var script = path.resolve(main);
+
+		it(path.relative(__dirname, script), (done) => {
+			var args = [script];
+			var opts = {
+				stdio: 'inherit'
+			};
+			var cp = child_process.spawn('node', args, opts);
+
+			cp.on('close', (code: number) => {
+				if (code) {
+					done(new Error('bad exit code ' + code));
+				}
+				else {
+					done();
+				}
+			});
+		});
+	}
+
 	testMantiSub(path.join(__dirname, 'many', 'main.js'));
 });

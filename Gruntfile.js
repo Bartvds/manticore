@@ -56,12 +56,10 @@ module.exports = function (grunt) {
 				target: 'es5',
 				module: 'commonjs',
 				sourcemap: true,
-				comments: true
+				comments: true,
+				declaration: true
 			},
 			build: {
-				options: {
-					declaration: true
-				},
 				src: ['src/**/*.ts'],
 				outDir: 'dist/'
 			},
@@ -88,7 +86,7 @@ module.exports = function (grunt) {
 		mochaTest: {
 			options: {
 				reporter: 'mocha-unfunk-reporter',
-				timeout: 8000
+				timeout: 18000
 			},
 			all: {
 				src: 'test/tmp/*.test.js'
@@ -148,14 +146,14 @@ module.exports = function (grunt) {
 		'build',
 		'ts:test',
 		'tslint:test',
+		'ts_clean:dist',
 		'sweep',
 		'clean:tmp',
 		'clean:test'
 	]);
 
 	grunt.registerTask('sweep', [
-		'clean:cruft',
-		'ts_clean:dist'
+		'clean:cruft'
 	]);
 
 	grunt.registerTask('debug', ['build']);

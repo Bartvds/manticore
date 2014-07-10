@@ -7,12 +7,10 @@ import path = require('path');
 import events = require('events');
 import assertMod = require('assert');
 import child_process = require('child_process');
+
 import typeOf = require('type-detect');
-
-var through2: any = require('through2');
-
 import Promise = require('bluebird');
-import JSONStream = require('JSONStream');
+import buffo = require('buffo');
 
 import lib = require('./lib');
 
@@ -47,7 +45,7 @@ export class Worker extends events.EventEmitter {
 
 	private options: lib.IOptions;
 	private child: child_process.ChildProcess;
-	private read: NodeJS.ReadableStream;
+	private read: NodeJS.ReadWriteStream;
 	private write: NodeJS.ReadWriteStream;
 	private ready: boolean = false;
 	private jobs: JobDict = Object.create(null);
@@ -82,10 +80,10 @@ export class Worker extends events.EventEmitter {
 		this.child = child_process.spawn(process.execPath, args, opts);
 		this.id = 'worker.' + this.child.pid;
 
-		this.write = JSONStream.stringify(false);
-		this.write.pipe(through2()).pipe(this.child.stdio[lib.WORK_TO_CLIENT]);
+		this.write = buffo.encodeStream();
+		this.write.pipe(this.child.stdio[lib.WORK_TO_CLIENT]);
 
-		this.read = this.child.stdio[lib.CLIENT_TO_WORK].pipe(JSONStream.parse(true));
+		this.read = this.child.stdio[lib.CLIENT_TO_WORK].pipe(buffo.decodeStream());
 		this.read.on('data', (msg) => {
 			if (msg.type === lib.TASK_RESULT) {
 				if (msg.id in this.jobs) {

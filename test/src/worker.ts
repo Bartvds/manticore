@@ -43,6 +43,12 @@ export function sumPromise(params: number[]): any {
 	});
 }
 
+export function echo(params: string[]): any {
+	return new Promise((resolve, reject) => {
+		resolve(params);
+	});
+}
+
 export function assertionError(params: number[]): any {
 	mc.assertType(params, 'string');
 }

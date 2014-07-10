@@ -8,7 +8,6 @@ import events = require('events');
 import assertMod = require('assert');
 
 import Promise = require('bluebird');
-import JSONStream = require('JSONStream');
 
 import lib = require('./lib');
 

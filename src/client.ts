@@ -7,11 +7,9 @@ import path = require('path');
 import util = require('util');
 import assertMod = require('assert');
 import typeOf = require('type-detect');
-import JSONStream = require('JSONStream');
+import buffo = require('buffo');
 
 import lib = require('./lib');
-
-var through2: any = require('through2');
 
 var state = {
 	id: 'worker.' + process.pid,
@@ -78,15 +76,15 @@ function init(): void {
 			bail('client intput stream unexpectedly ended');
 		});
 
-		write = JSONStream.stringify(false);
-		write.pipe(through2()).pipe(fs.createWriteStream(null, {fd: lib.CLIENT_TO_WORK}));
+		write = buffo.encodeStream();
+		write.pipe(fs.createWriteStream(null, {fd: lib.CLIENT_TO_WORK}));
 
 		write.on('error', function (err) {
 			state.closing = true;
 			bail('object input stream errored', err);
 		});
 
-		objects = read.pipe(JSONStream.parse(true));
+		objects = read.pipe(buffo.decodeStream());
 
 		objects.on('data', (msg) => {
 			if (msg.type === lib.TASK_RUN) {

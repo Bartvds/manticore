@@ -39,9 +39,9 @@
     "definition": "./dist/manticore.d.ts"
   },
   "dependencies": {
-    "JSONStream": "^0.8.4",
+    "bl": "^0.8.2",
     "bluebird": "^1.2.4",
-    "through2": "^0.5.1",
+    "buffo": "0.0.3",
     "type-detect": "^0.1.2"
   },
   "devDependencies": {
