@@ -26,6 +26,7 @@ export interface IOptions {
 	paralel?: number;
 	attempts?: number;
 	idleTimeout?: number;
+	harmony?: boolean;
 	log?: boolean;
 	emit?: boolean;
 }

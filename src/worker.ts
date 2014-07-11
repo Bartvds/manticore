@@ -69,9 +69,12 @@ export class Worker extends events.EventEmitter {
 			}
 		});
 
-		var args: any[] = [
-			this.options.worker
-		];
+		var args: any[] = [];
+		if (this.options.harmony) {
+			args.push('--harmony');
+		}
+		args.push(this.options.worker);
+
 		var opts = {
 			cwd: process.cwd(),
 			stdio: ['ignore', process.stdout, process.stderr, 'pipe', 'pipe', 'ipc']
