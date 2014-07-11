@@ -16,8 +16,8 @@ import Worker = _worker.Worker;
 import Job = _worker.Job;
 
 export interface IPool extends NodeJS.EventEmitter {
-	run(task: string, params: any): Promise<any>;
-	curried(task: string): (params: any) => Promise<any>;
+	run(task: string, params?: any): Promise<any>;
+	curried(task: string): (params?: any) => Promise<any>;
 }
 
 export function createPool(options: lib.IOptions): IPool {
@@ -41,7 +41,7 @@ class Pool extends events.EventEmitter implements IPool {
 		this.options.worker = path.resolve(this.options.worker);
 		this.options.concurrent = lib.optValue(this.options.concurrent, os.cpus().length);
 		this.options.paralel = lib.optValue(this.options.paralel, 1);
-		this.options.harmony = lib.optValue(this.options.harmony, 3);
+		this.options.harmony = lib.optValue(this.options.harmony, false);
 		this.options.attempts = lib.optValue(this.options.attempts, 3);
 		this.options.idleTimeout = lib.optValue(this.options.idleTimeout, 500);
 		this.options.log = lib.optValue(this.options.log, false);
@@ -54,7 +54,7 @@ class Pool extends events.EventEmitter implements IPool {
 		}
 	}
 
-	run(task: string, params: any): Promise<any> {
+	run(task: string, params?: any): Promise<any> {
 		return new Promise<any>((resolve, reject) => {
 			var job = new Job(task, params, (err, res) => {
 				if (err) {
@@ -72,8 +72,8 @@ class Pool extends events.EventEmitter implements IPool {
 		});
 	}
 
-	curried(task: string): (params: any) => Promise<any> {
-		return (params: any) => {
+	curried(task: string): (params?: any) => Promise<any> {
+		return (params?: any) => {
 			return this.run(task, params);
 		};
 	}

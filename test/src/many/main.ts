@@ -11,7 +11,7 @@ var mc: typeof Manticore = require('../../../dist/index');
 
 var pool = mc.createPool({
 	log: true,
-	worker: require.resolve('../worker'),
+	worker: require.resolve('../test-worker'),
 	concurrent: 2
 });
 

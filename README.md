@@ -15,46 +15,86 @@ The core concept is you got some code in a function that does some heavy work an
 
 ## Why yet another worker module?
 
-The worker modules I found on npm all have their problems: they either lack functionality, use external dependencies or make all kinds of weird assumptions that get in the way.
+The worker modules I found on npm all had their problems: they either lack functionality, use external dependencies or make all kinds of weird assumptions that get in the way.
 
-Instead of trying to wrangle my app to fit those unsatisfactory modules I build Manticore to be simple and effective with the features you need to get big things done at hyperspeed without jumping through crazy hoops.
+Also I needed support for transfer of all standard JavaScript values, including Buffers, TypedArrays and Date's.
 
 
 ## How to use?
 
-You put your code in a function that accepts a single parameter, then add a bunch of them in a worker module. In this module you register the functions to expose them as tasks.
+Put your code in a function that accepts a single parameter, then add a bunch of them in a module. In this module register the functions to expose them as tasks.
 
-In your main app you setup the pool for that module and execute the methods via the pool with your data parameter and Manticore will spawn (and despawn) workers as needed and distribute the work and return the result as a Promise.
+Setup the pool in the main app and execute the methods with your data parameter and Manticore will spawn (and despawn) workers as needed and distribute the work and return the result as a Promise. Tasks can also return a binary or object stream (by returning a stream-handle, see below).
 
-You can use a function that returns a value synchronously, or go asynchronous and either use the node.js-style callback or return a Promise. 
+The tasks van return a value synchronously, return a Promise or asynchronously use the node.js-style callback. 
 
-By default each worker works on only one job at a time, but there is an option to allow workers to process multiple jobs simultaneously that allows a extra boost for IO-bound tasks (of course assuming you use async IO).
+Parameter and return value are serialised via [Buffo](https://github.com/Bartvds/buffo); so all standard JavaScript values can be transferred, including Buffers, TypedArrays, Date's etc.
+
+
+## Concurreny
+
+By default each worker works on only one job at a time, but there is an option to allow workers to process multiple jobs simultaneously, use this for IO-bound tasks (of course assuming you use async IO).
 
 
 ## Return value
 
-The return value of the pool is always a ES6-style Promise so you easily use fancy logic like Promise.all() or Promise.race().
+When executing a task the pool's return value is always a ES6-style Promise. This works great with `Promise.all()` or `Promise.race()`.
 
 For some next level setups you can leverage Promise-glue helpers from modules like Q, Bluebird etc. To get creative and pass the Promises into more exotic modules like React, Baconjs, Lazy.js, Highland and all the other cool utility modules with Promise support.
 
-Keep in mind the parameter object and return value are serialised so you cannot pass functions or prototype based objects, only simple JSON-like data.
+Workers can also return streams!
 
 
 ## Notes
 
-- Returns a ES6 Promise.
+- Return value is a ES6 Promise.
 - Transfers data between threads using pipes (eg: non-blocking).
-- Data gets serialised so only primitive JSON-like data can be transferred.
-- Makes sure you configure concurrent/paralel to suit your app for best performance
+- Data gets serialised via [Buffo encoding](https://github.com/Bartvds/buffo).
+- Workers can also return a binary or object stream.
+
+## Advice
+
+- Make sure to configure `concurrent` & `paralel` to suit your app for best performance.
+- For best performance when transferring large amounts of data use String, Buffer or a TypedArray params. Regular Array has more encoding and bandwidth overhead (every element has its own type).
+- For more speed and streamy processes return a stream, either binary or one of the above.
 
 ## Todo
 
-- Swap JSON serialisation for something that supports Buffers.
 - Separate settings per function.
 
 ## Usage
 
-### Setup worker
+### Pool options
+
+````ts
+var pool = mc.createPool({
+	// path to the worker module. pro-tip: use require.resolve()
+	worker: string;
+	
+	// maximum amount of worker processes
+	// - defaults: require('os').cpus().length
+	// tip: when running on many cores leave 1 core free for main process: require('os').cpus().length -1
+	concurrent?: number;
+	// maximum amount of jobs to pass to each worker
+	// set this to a higher value if your jobs are async and IO-bound
+	// - default: 1
+	paralel?: number;
+	// maximum retries if a worker fails
+	attempts?: number;
+
+	// worker idle timeout in miliseconds, shuts down workers that are idling
+	idleTimeout?: number;
+	
+	// emit 'status' events, handy for debugging
+	emit?: boolean;
+	// console.log status events
+	log?: boolean;
+});
+````
+
+### Setup worker tasks
+
+Communication with the worker uses [Buffo encoding](https://github.com/Bartvds/buffo), check there for the supported native JavaScript types.
 
 Put the worker methods in their own module where they are registered to Manticore:
 
@@ -73,30 +113,8 @@ mc.registerTask('myFunc2', function(params) {
 });
 ````
 
-There are different ways to return values:
-
-````js
-// does it run syncronous?
-function myFunc1(params) {
-    return heavyStuff(params);
-}
-
-// maybe use the node-style callback?
-function myFunc2(params, callback) {
-    heavyStuff(params, function(err, result) {
-        callback(err, result);
-    });
-}
-
-// or return a Promise?
-function myFunc3(params) {
-    return heavyStuff(params).then(function(res) {
-        return someMoreWork(res)
-    };
-}
-````
-
 Register in bulk:
+
 ````js
 // add named functions as array
 mc.registerTasks([
@@ -114,6 +132,35 @@ mc.registerTasks({
 });
 ````
 
+There are different ways to return values:
+
+````js
+// directly return a value from synchronous work
+function myFunc1(params) {
+    return heavyStuff(params);
+}
+
+// node-style: callback(error, result)
+function myFunc2(params, callback) {
+    heavyStuff(params, function(result) {
+        callback(null, result);
+    });
+}
+
+// return a Promise ('thenable')
+function myFunc3(params) {
+    return heavyStuff(params).then(function(res) {		
+        return someMoreWork(res)
+    };
+}
+
+// stream data amd pipe to a `returnStream`: choose either object or binary mode
+function myFunc4(params) {
+	// lets use object mode here
+    return someStream(params).pipe(mc.returnStream(true));
+}
+````
+
 ## Use the pool
 
 Create a pool in the main app:
@@ -123,7 +170,8 @@ var mc = require('manticore');
 
 var pool = mc.createPool({
 	modulePath: require.resolve('./worker'),
-	concurrent: 4
+	concurrent: 4,
+	paralel: 2
 });
 ````
 
@@ -158,32 +206,45 @@ Promise.all(myArray.map(pool.curried('myFunc1'))).then(function(results) {
 
 That's it! :+1:
 
+## Streams
 
-### Pool options
+To return a stream from a task create a 'return stream' via `mc.returnStream(objectMode)`, then pipe data (or objects) and return it. When using objectMode the objects get serialised via Buffo.
 
-````ts
+In the worker:
+
+````js
+var mc = require('manticore');
+
+// return a binary stream
+function objects(params) {
+    return someBinaryStream(params).pipe(mc.returnStream(false));
+}
+
+// return an object stream
+function bytes(params) {
+    return someObjectStream(params).pipe(mc.returnStream(true));
+}
+ms.registerTasks([objects, bytes])
+````
+
+In the main application:
+
+````js
+var mc = require('manticore');
 var pool = mc.createPool({
-	// path to the worker module. pro-tip: use require.resolve()
-	worker: string;
-	
-	// maximum amount of worker processes
-	// - defaults: require('os').cpus().length
-	// tip: when running on many cores leave 1 core free for main process: require('os').cpus().length -1
-	concurrent?: number;
-	// maximum amount of jobs to pass to each worker
-	// set this to a higher value if your jobs are async and IO-bound
-	// - default: 1
-	paralel?: number;
-	// maximum retries if a worker fails
-	attempts?: number;
-
-	// worker idle timeout in miliseconds, shuts down workers that are idling
-	idleTimeout?: number;
-	
-	// emit 'status' events, handy for debugging
-	emit?: boolean;
-	// console.log status events for debugging
-	log?: boolean;
+	modulePath: require.resolve('./worker'),
+});
+// promise resolves to a stream
+pool.run('objects', params).then(function(stream) {
+    stream.on('data', function(data) {
+        // got data
+    });
+    stream.on('end', function(data) {
+        // job done!
+    });
+});
+pool.run('bytes', params).then(function(stream) {
+    stream.pipe(myOutputStream);
 });
 ````
 
@@ -219,6 +280,7 @@ They are welcome but please discuss in [the issues](https://github.com/Bartvds/m
 
 ## History
 
+- 0.3.0 - Use [buffo](https://github.com/Bartvds/buffo) object streams, tasks can return a stream.
 - 0.2.0 - Transfer data over non-blocking pipes, renamed `modulePath` option to `worker`.
 - 0.1.0 - First release.
 

@@ -7,10 +7,12 @@ declare module 'manticore' {
     export import registerTasks = client.registerTasks;
     export import registerTask = client.registerTask;
     export import createPool = pool.createPool;
+    export import returnStream = client.returnStream;
     export import assertProp = lib.assertProp;
     export import assertType = lib.assertType;
-    export import IOptions = lib.IOptions;
     export import IPool = pool.IPool;
+    export import IOptions = lib.IOptions;
+    export import ICallback = lib.IResultCallback;
 }
 
 declare module '__manticore/client' {
@@ -23,13 +25,14 @@ declare module '__manticore/client' {
     }
     export function registerTasks(map: any): void;
     export function registerTask(arg: any, func?: ITaskFunc): void;
+    export function returnStream(objectMode: boolean): NodeJS.ReadWriteStream;
 }
 
 declare module '__manticore/pool' {
     import lib = require('__manticore/lib');
     export interface IPool extends NodeJS.EventEmitter {
-        run(task: string, params: any): Promise<any>;
-        curried(task: string): (params: any) => Promise<any>;
+        run(task: string, params?: any): Promise<any>;
+        curried(task: string): (params?: any) => Promise<any>;
     }
     export function createPool(options: lib.IOptions): IPool;
 }
@@ -43,6 +46,8 @@ declare module '__manticore/lib' {
     export var ERROR: string;
     export var WORK_TO_CLIENT: number;
     export var CLIENT_TO_WORK: number;
+    export var CLIENT: string;
+    export var CLIENT_RETURN: string;
     export var STATUS: string;
     export interface IOptions {
         worker: string;
@@ -50,6 +55,7 @@ declare module '__manticore/lib' {
         paralel?: number;
         attempts?: number;
         idleTimeout?: number;
+        harmony?: boolean;
         log?: boolean;
         emit?: boolean;
     }
@@ -66,6 +72,8 @@ declare module '__manticore/lib' {
         error: any;
         result: any;
         duration: number;
+        stream?: string;
+        objectMode?: boolean;
     }
     export interface IResultCallback {
         (err: Error, result: any): void;

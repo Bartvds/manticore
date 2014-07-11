@@ -5,11 +5,14 @@
 import fs = require('fs');
 import path = require('path');
 import util = require('util');
+import stream = require('stream');
 import assertMod = require('assert');
 import typeOf = require('type-detect');
 import buffo = require('buffo');
+import multiplexMod = require('multiplex');
 
 import lib = require('./lib');
+import streams = require('./streams');
 
 var state = {
 	id: 'worker.' + process.pid,
@@ -22,6 +25,8 @@ var state = {
 var read: NodeJS.ReadableStream = null;
 var write: NodeJS.WritableStream = null;
 var objects: NodeJS.ReadWriteStream = null;
+
+var multiplex = multiplexMod();
 
 export interface ITaskFunc {
 	(params: any, callback: lib.IResultCallback): any;
@@ -76,8 +81,10 @@ function init(): void {
 			bail('client intput stream unexpectedly ended');
 		});
 
+		multiplex.pipe(fs.createWriteStream(null, {fd: lib.CLIENT_TO_WORK}));
+
 		write = buffo.encodeStream();
-		write.pipe(fs.createWriteStream(null, {fd: lib.CLIENT_TO_WORK}));
+		write.pipe(multiplex.createStream(lib.CLIENT));
 
 		write.on('error', function (err) {
 			state.closing = true;
@@ -166,6 +173,10 @@ export function registerTask(arg: any, func?: ITaskFunc): void {
 	defineTask(arg, func);
 }
 
+export function returnStream(objectMode: boolean): NodeJS.ReadWriteStream {
+	return streams.createClientReturn(objectMode);
+}
+
 function runFunc(msg: lib.IStartMessage): void {
 	var res: lib.IResultMessage = {
 		worker: state.id,
@@ -190,6 +201,8 @@ function runFunc(msg: lib.IStartMessage): void {
 			delete state.active[msg.id];
 
 			if (!hasSent) {
+				res.duration = Date.now() - start;
+
 				// errors don't serialise well
 				if (typeOf(res.error) === 'object') {
 					var err = {
@@ -203,11 +216,21 @@ function runFunc(msg: lib.IStartMessage): void {
 					};
 					res.error = err;
 				}
-				res.duration = Date.now() - start;
+				else if (res.result && res.result.owner === streams.ident) {
+					var stream = <streams.IDStream> res.result;
+					res.stream = stream.id;
+					res.objectMode = stream.objectMode;
+					res.result = null;
+					process.nextTick(() => {
+						var out = multiplex.createStream(stream.id);
+						stream.on('end', () => {
+							// multiplex.destroyStream(stream.id);
+						});
+						stream.pipe(out);
+					});
+				}
 				hasSent = true;
-				process.nextTick(() => {
-					write.write(res);
-				});
+				write.write(res);
 			}
 		}
 	};
@@ -251,4 +274,8 @@ function runFunc(msg: lib.IStartMessage): void {
 process.on('uncaughtException', (e) => {
 	bail(e);
 	throw e;
+});
+
+process.on('exit', () => {
+	console.log('exit %s', state.id);
 });

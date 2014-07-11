@@ -6,3 +6,5 @@
 /// <reference path="bl/bl.d.ts" />
 /// <reference path="source-map-support/source-map-support.d.ts" />
 /// <reference path="buffo/buffo.d.ts" />
+/// <reference path="multiplex/multiplex.d.ts" />
+/// <reference path="deep-eql/deep-eql.d.ts" />

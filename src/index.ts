@@ -12,12 +12,15 @@ export import registerTasks = client.registerTasks;
 export import registerTask = client.registerTask;
 export import createPool = pool.createPool;
 
+export import returnStream = client.returnStream;
+
 // helpers
 export import assertProp = lib.assertProp;
 export import assertType = lib.assertType;
 
 // types
-export import IOptions = lib.IOptions;
 export import IPool = pool.IPool;
+export import IOptions = lib.IOptions;
+export import ICallback = lib.IResultCallback;
 
 [client, pool, lib];

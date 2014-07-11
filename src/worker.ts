@@ -11,8 +11,10 @@ import child_process = require('child_process');
 import typeOf = require('type-detect');
 import Promise = require('bluebird');
 import buffo = require('buffo');
+import multiplexMod = require('multiplex');
 
 import lib = require('./lib');
+import streams = require('./streams');
 
 var jobI: number = 0;
 
@@ -39,6 +41,16 @@ export class Job {
 interface JobDict {
 	[id: string]: Job;
 }
+interface StreamDict {
+	[id: string]: StreamJob;
+}
+
+interface StreamJob {
+	id: string;
+	job: Job;
+	objectMode: boolean;
+	stream?: NodeJS.ReadWriteStream;
+}
 
 export class Worker extends events.EventEmitter {
 	id: string;
@@ -50,7 +62,9 @@ export class Worker extends events.EventEmitter {
 	private ready: boolean = false;
 	private jobs: JobDict = Object.create(null);
 	private idleTimer: lib.BumpTimeout;
+	private multiplex: multiplexMod.Multiplex;
 	private _activeCount: number = 0;
+	private returnStreams: StreamDict = Object.create(null);
 
 	kill: () => void;
 
@@ -60,13 +74,51 @@ export class Worker extends events.EventEmitter {
 		this.options = options;
 
 		this.idleTimer = new lib.BumpTimeout(this.options.idleTimeout, () => {
-			if (this.activeCount === 0) {
+			if (this.activeCount === 0 && !this.haveActiveStreams()) {
 				this.status('idle timeout');
 				this.kill();
 			}
 			else {
 				this.idleTimer.next();
 			}
+		});
+
+		this.multiplex = multiplexMod((stream, id) => {
+			// this.status('received stream ' + id);
+			if (id === lib.CLIENT) {
+				this.status('client stream open', id);
+				stream.pipe(this.read);
+			}
+			else if (id in this.returnStreams) {
+				var info = this.returnStreams[id];
+				this.status('return stream open', id, info.job.id);
+
+				if (info.objectMode) {
+					stream = stream.pipe(buffo.decodeStream());
+				}
+				info.stream = stream;
+				info.job.callback(null, stream);
+
+				stream.on('end', () => {
+					this.status('return stream end', id, info.job.id);
+					this.idleTimer.next();
+					this.multiplex.destroyStream(id);
+					delete this.returnStreams[id];
+				});
+				stream.on('error', (err) => {
+					this.status('return stream error', id, info.job.id);
+					this.idleTimer.next();
+					delete this.returnStreams[id];
+				});
+			}
+		});
+		this.multiplex.on('error', () => {
+			console.log('worker multiplex error');
+			this.kill();
+		});
+		this.multiplex.on('end', () => {
+			console.log('worker multiplex end');
+			this.kill();
 		});
 
 		var args: any[] = [];
@@ -86,8 +138,10 @@ export class Worker extends events.EventEmitter {
 		this.write = buffo.encodeStream();
 		this.write.pipe(this.child.stdio[lib.WORK_TO_CLIENT]);
 
-		this.read = this.child.stdio[lib.CLIENT_TO_WORK].pipe(buffo.decodeStream());
-		this.read.on('data', (msg) => {
+		this.child.stdio[lib.CLIENT_TO_WORK].pipe(this.multiplex);
+
+		this.read = buffo.decodeStream();
+		this.read.on('data', (msg: lib.IResultMessage) => {
 			if (msg.type === lib.TASK_RESULT) {
 				if (msg.id in this.jobs) {
 					var job = this.jobs[msg.id];
@@ -97,16 +151,24 @@ export class Worker extends events.EventEmitter {
 					// upfix Error
 					if (msg.error) {
 						msg.error.toString = () => {
-							return msg.message;
+							return msg.error.message;
+						};
+						this.status('completed with error', job, Math.round(msg.duration) + 'ms');
+						job.callback(msg.error, null);
+					}
+					else if (msg.stream) {
+						this.status('return stream expected', msg.stream, job);
+						this.returnStreams[msg.stream] = {
+							objectMode: !!msg.objectMode,
+							id: msg.stream,
+							job: job
 						};
 					}
-
-					this.status('completed', job, Math.round(msg.duration) + 'ms');
-
-					job.callback(msg.error, msg.result);
-
+					else {
+						this.status('completed', job, Math.round(msg.duration) + 'ms');
+						job.callback(msg.error, msg.result);
+					}
 					this.emit(lib.TASK_RESULT, job);
-
 					this.idleTimer.next();
 				}
 			}
@@ -229,6 +291,13 @@ export class Worker extends events.EventEmitter {
 
 	get activeCount(): number {
 		return this._activeCount;
+	}
+
+	haveActiveStreams(): boolean {
+		for (var n in this.returnStreams) {
+			return true;
+		}
+		return false;
 	}
 
 	toString(): string {

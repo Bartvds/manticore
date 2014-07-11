@@ -7,37 +7,41 @@ import Promise = require('bluebird');
 
 var mc: typeof Manticore = require('../../dist/index');
 
-export function sumSync(params: number[]): any {
-	mc.assertType(params, 'array');
+function reduce<T, U>(nums: T[], call: (memo: U, value: T) => U, memo: U): U {
+	return Array.prototype.reduce.call(nums, call, memo);
+}
 
-	return params.reduce((memo: number, value: number) => {
+export function sumSync(params: number[]): any {
+	mc.assertType(params, 'arraylike');
+
+	return reduce(params, (memo: number, value: number) => {
 		return memo + value;
 	}, 0);
 }
 
-export function sumNodeSync(params: number[], callback: (err: Error, result: any) => void): void {
-	mc.assertType(params, 'array');
+export function sumNodeSync(params: number[], callback: Manticore.ICallback): void {
+	mc.assertType(params, 'arraylike');
 
-	callback(null, params.reduce((memo: number, value: number) => {
+	callback(null, reduce(params, (memo: number, value: number) => {
 		return memo + value;
 	}, 0));
 }
 
-export function sumNodeAsync(params: number[], callback: (err: Error, result: any) => void): void {
-	mc.assertType(params, 'array');
+export function sumNodeAsync(params: number[], callback: Manticore.ICallback): void {
+	mc.assertType(params, 'arraylike');
 
 	setTimeout(() => {
-		callback(null, params.reduce((memo: number, value: number) => {
+		callback(null, reduce(params, (memo: number, value: number) => {
 			return memo + value;
 		}, 0));
 	}, 10);
 }
 
 export function sumPromise(params: number[]): any {
-	mc.assertType(params, 'array');
+	mc.assertType(params, 'arraylike');
 
 	return new Promise((resolve, reject) => {
-		resolve(params.reduce((memo: number, value: number) => {
+		resolve(reduce(params, (memo: number, value: number) => {
 			return memo + value;
 		}, 0));
 	});
@@ -57,11 +61,11 @@ export function errorSync(params: number[]): any {
 	throw new Error('foo');
 }
 
-export function errorNodeSync(params: number[], callback: (err: Error, result: any) => void): void {
+export function errorNodeSync(params: number[], callback: Manticore.ICallback): void {
 	callback(new Error('foo'), null);
 }
 
-export function errorNodeAsync(params: number[], callback: (err: Error, result: any) => void): void {
+export function errorNodeAsync(params: number[], callback: Manticore.ICallback): void {
 	setTimeout(() => {
 		callback(new Error('foo'), null);
 	}, 50);
@@ -84,7 +88,7 @@ mc.registerTasks([
 	}
 ]);
 
-mc.registerTask('anon', function(params) {
+mc.registerTask('anon', function (params) {
 	return params;
 });
 

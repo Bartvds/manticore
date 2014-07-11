@@ -18,6 +18,9 @@ export var ERROR: string = 'error';
 export var WORK_TO_CLIENT: number = 3;
 export var CLIENT_TO_WORK: number = 4;
 
+export var CLIENT: string = 'c';
+export var CLIENT_RETURN: string = 'cr';
+
 export var STATUS: string = 'status';
 
 export interface IOptions {
@@ -45,10 +48,20 @@ export interface IResultMessage {
 	error: any;
 	result: any;
 	duration: number;
+	stream?: string;
+	objectMode?: boolean;
 }
 
 export interface IResultCallback {
 	(err: Error, result: any): void;
+}
+
+function strim(str: any, len: number): string {
+	str = String(str);
+	if (str.length > len) {
+		str = str.substr(0, len) + '<...>';
+	}
+	return str;
 }
 
 export function assertProp(value: any, prop: string, type: string): void {
@@ -57,7 +70,15 @@ export function assertProp(value: any, prop: string, type: string): void {
 }
 
 export function assertType(value: any, type: string, label?: string): void {
-	assertMod(typeOf(value) === type, 'expected ' + (label || value) + ' to be a ' + type);
+	var msg = 'expected ' + (label || strim(value, 40)) + ' to be a ' + type;
+	switch (type) {
+		case 'arraylike':
+			assertMod(typeof value === 'object' && value, msg);
+			assertMod(typeof value.length === 'number', msg);
+			break;
+		default:
+			assertMod(typeOf(value) === type, msg);
+	}
 }
 
 export function optValue<T>(value: T, alt: T): T {
