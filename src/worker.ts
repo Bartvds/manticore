@@ -112,8 +112,9 @@ export class Worker extends events.EventEmitter {
 				});
 			}
 		});
-		this.multiplex.on('error', () => {
+		this.multiplex.on('error', (err) => {
 			console.log('worker multiplex error');
+			console.log(err.stack);
 			this.kill();
 		});
 		this.multiplex.on('end', () => {
