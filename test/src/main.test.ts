@@ -17,213 +17,249 @@ var assert = chai.assert;
 
 var mc: typeof Manticore = require('../../dist/index');
 
-describe('string', () => {
-	it('simple', () => {
-		var pool = mc.createPool({
-			worker: require.resolve('./test-worker')
-		});
-		var value = Array(20).join('a');
-		return pool.run('echo', value).then((res) => {
-			assert.strictEqual(res, value);
-		});
-	});
-	it('long', () => {
-		var pool = mc.createPool({
-			worker: require.resolve('./test-worker')
-		});
-		var value = Array(20).join('a');
-		return pool.run('echo', value).then((res) => {
-			assert.strictEqual(res, value);
-		});
-	});
-	it('utf8', () => {
-		var pool = mc.createPool({
-			worker: require.resolve('./test-worker')
-		});
-		var value = '明日がある。';
-		return pool.run('echo', value).then((res) => {
-			assert.strictEqual(res, value);
-		});
-	});
-});
+interface IVariant {
+	streams: boolean;
+}
+interface IVariantMap {
+	[label: string]: IVariant;
+}
 
-describe('buffer', () => {
-	it('simple', () => {
-		var pool = mc.createPool({
-			worker: require.resolve('./test-worker')
-		});
-		var value = new Buffer('abcdefg');
-		return pool.run('echo', value).then((res) => {
-			assert.deepEqual(res, value);
-		});
-	});
-	it('kilo', () => {
-		var pool = mc.createPool({
-			worker: require.resolve('./test-worker')
-		});
-		var value = new Buffer(1024);
-		return pool.run('echo', value).then((res) => {
-			assert.deepEqual(res, value);
-		});
-	});
-	it('mega', () => {
-		var pool = mc.createPool({
-			worker: require.resolve('./test-worker')
-		});
-		var value = new Buffer(1024 * 1024);
-		return pool.run('echo', value).then((res) => {
-			assert.deepEqual(res, value);
-		});
-	});
-});
-
-describe('json', () => {
-	it('object', () => {
-		var pool = mc.createPool({
-			worker: require.resolve('./test-worker')
-		});
-		var value = {a: 1, b: 2, c: [1, 2]};
-		return pool.run('echo', value).then((res) => {
-			assert.deepEqual(res, value);
-		});
-	});
-	it('array', () => {
-		var pool = mc.createPool({
-			worker: require.resolve('./test-worker')
-		});
-		var value = [1, 2, 3];
-		return pool.run('echo', value).then((res) => {
-			assert.deepEqual(res, value);
-		});
-	});
-});
-
-describe('core', () => {
-	it('assertion', () => {
-		var pool = mc.createPool({
-			worker: require.resolve('./test-worker')
-		});
-		return pool.run('assertionError', 123).then((res) => {
-			assert.fail('expected to fail');
-		}, (err) => {
-			assert.isObject(err);
-			assert.strictEqual(err.message, 'expected 123 to be a string');
-			assert.strictEqual(err.name, 'AssertionError');
-		});
-	});
-	it('anon', () => {
-		var pool = mc.createPool({
-			worker: require.resolve('./test-worker')
-		});
-		return pool.run('anon', 123).then((res) => {
-			assert.strictEqual(res, 123);
-		});
-	});
-	it('named', () => {
-		var pool = mc.createPool({
-			worker: require.resolve('./test-worker')
-		});
-		return pool.run('named', 123).then((res) => {
-			assert.strictEqual(res, 123);
-		});
-	});
-	it('array', () => {
-		var pool = mc.createPool({
-			worker: require.resolve('./test-worker')
-		});
-		return Promise.all([
-			pool.run('arrayA', 123),
-			pool.run('arrayB', 321)
-		]).then((res) => {
-			assert.deepEqual(res, [123, 321]);
-		});
-	});
-	it('curried', () => {
-		var pool = mc.createPool({
-			worker: require.resolve('./test-worker')
-		});
-		var curried = pool.curried('named');
-		return curried(123).then((res) => {
-			assert.strictEqual(res, 123);
-		});
-	});
-});
-
-describe('big jobs', () => {
-
-	var num10k = [];
-	for (var i = 0; i < 10000; i++) {
-		num10k.push(i);
+var variance: IVariantMap = {
+	'no-streams': {
+		streams: false
+	},
+	'streams': {
+		streams: true
 	}
+};
 
-	it('long arr', () => {
-		var pool = mc.createPool({
-			worker: require.resolve('./test-worker')
-		});
-		return pool.run('sumNodeAsync', num10k);
-	});
-	it('long uint', () => {
-		var pool = mc.createPool({
-			worker: require.resolve('./test-worker')
-		});
-		return pool.run('sumNodeAsync', new Uint16Array(num10k));
-	});
-	it('many', () => {
-		var pool = mc.createPool({
-			worker: require.resolve('./test-worker'),
-			paralel: 1
-		});
-		var nums = [];
-		for (var i = 0; i < 100; i++) {
-			nums.push(i);
-		}
-		// use TypedArray for dense transfer
-		var arr = new Uint16Array(nums);
-		var work = [];
-		for (var j = 0; j < 500; j++) {
-			work.push(pool.run('sumNodeAsync', arr));
-		}
-		return Promise.all(work);
-	});
-});
-
-describe('resolution', () => {
-	var data = [
-		[1, 2, 3, 4],
-		[1, 2, 3, 4],
-		[11, 22, 33, 44],
-		[11, 22, 33, 44],
-		[111, 222, 333, 444],
-		[111, 222, 333, 444],
-	];
-	var expected = [
-		10,
-		10,
-		110,
-		110,
-		1110,
-		1110
-	];
-
-	function testMethod(method: string) {
-		it(method, () => {
-			var pool = mc.createPool({
-				worker: require.resolve('./test-worker'),
-				concurrent: 2
+Object.keys(variance).forEach((label) => {
+	var variant: IVariant = variance[label];
+	describe('variant ' + label, () => {
+		describe('string', () => {
+			it('simple', () => {
+				var pool = mc.createPool({
+					worker: require.resolve('./test-worker'),
+					streams: variant.streams
+				});
+				var value = Array(20).join('a');
+				return pool.run('echo', value).then((res) => {
+					assert.strictEqual(res, value);
+				});
 			});
-
-			return Promise.all(data.map((value) => {
-				return pool.run(method, value);
-			})).then((res) => {
-				assert.deepEqual(res, expected);
+			it('long', () => {
+				var pool = mc.createPool({
+					worker: require.resolve('./test-worker'),
+					streams: variant.streams
+				});
+				var value = Array(20).join('a');
+				return pool.run('echo', value).then((res) => {
+					assert.strictEqual(res, value);
+				});
+			});
+			it('utf8', () => {
+				var pool = mc.createPool({
+					worker: require.resolve('./test-worker'),
+					streams: variant.streams
+				});
+				var value = '明日がある。';
+				return pool.run('echo', value).then((res) => {
+					assert.strictEqual(res, value);
+				});
 			});
 		});
-	}
 
-	testMethod('sumSync');
-	testMethod('sumNodeSync');
-	testMethod('sumNodeAsync');
-	testMethod('sumPromise');
+		describe('buffer', () => {
+			it('simple', () => {
+				var pool = mc.createPool({
+					worker: require.resolve('./test-worker'),
+					streams: variant.streams
+				});
+				var value = new Buffer('abcdefg');
+				return pool.run('echo', value).then((res) => {
+					assert.deepEqual(res, value);
+				});
+			});
+			it('kilo', () => {
+				var pool = mc.createPool({
+					worker: require.resolve('./test-worker'),
+					streams: variant.streams
+				});
+				var value = new Buffer(1024);
+				return pool.run('echo', value).then((res) => {
+					assert.deepEqual(res, value);
+				});
+			});
+			it('mega', () => {
+				var pool = mc.createPool({
+					worker: require.resolve('./test-worker'),
+					streams: variant.streams
+				});
+				var value = new Buffer(1024 * 1024);
+				return pool.run('echo', value).then((res) => {
+					assert.deepEqual(res, value);
+				});
+			});
+		});
+
+		describe('json', () => {
+			it('object', () => {
+				var pool = mc.createPool({
+					worker: require.resolve('./test-worker'),
+					streams: variant.streams
+				});
+				var value = {a: 1, b: 2, c: [1, 2]};
+				return pool.run('echo', value).then((res) => {
+					assert.deepEqual(res, value);
+				});
+			});
+			it('array', () => {
+				var pool = mc.createPool({
+					worker: require.resolve('./test-worker'),
+					streams: variant.streams
+				});
+				var value = [1, 2, 3];
+				return pool.run('echo', value).then((res) => {
+					assert.deepEqual(res, value);
+				});
+			});
+		});
+
+		describe('core', () => {
+			it('assertion', () => {
+				var pool = mc.createPool({
+					worker: require.resolve('./test-worker'),
+					streams: variant.streams
+				});
+				return pool.run('assertionError', 123).then((res) => {
+					assert.fail('expected to fail');
+				}, (err) => {
+					assert.isObject(err);
+					assert.strictEqual(err.message, 'expected 123 to be a string');
+					assert.strictEqual(err.name, 'AssertionError');
+				});
+			});
+			it('anon', () => {
+				var pool = mc.createPool({
+					worker: require.resolve('./test-worker'),
+					streams: variant.streams
+				});
+				return pool.run('anon', 123).then((res) => {
+					assert.strictEqual(res, 123);
+				});
+			});
+			it('named', () => {
+				var pool = mc.createPool({
+					worker: require.resolve('./test-worker'),
+					streams: variant.streams
+				});
+				return pool.run('named', 123).then((res) => {
+					assert.strictEqual(res, 123);
+				});
+			});
+			it('array', () => {
+				var pool = mc.createPool({
+					worker: require.resolve('./test-worker'),
+					streams: variant.streams
+				});
+				return Promise.all([
+					pool.run('arrayA', 123),
+					pool.run('arrayB', 321)
+				]).then((res) => {
+					assert.deepEqual(res, [123, 321]);
+				});
+			});
+			it('curried', () => {
+				var pool = mc.createPool({
+					worker: require.resolve('./test-worker'),
+					streams: variant.streams
+				});
+				var curried = pool.curried('named');
+				return curried(123).then((res) => {
+					assert.strictEqual(res, 123);
+				});
+			});
+		});
+
+		describe('big jobs', () => {
+
+			var num10k = [];
+			for (var i = 0; i < 10000; i++) {
+				num10k.push(i);
+			}
+
+			it('long arr', () => {
+				var pool = mc.createPool({
+					worker: require.resolve('./test-worker'),
+					streams: variant.streams
+				});
+				return pool.run('sumNodeAsync', num10k);
+			});
+			it('long uint', () => {
+				var pool = mc.createPool({
+					worker: require.resolve('./test-worker'),
+					streams: variant.streams
+				});
+				return pool.run('sumNodeAsync', new Uint16Array(num10k));
+			});
+			it('many', () => {
+				var pool = mc.createPool({
+					worker: require.resolve('./test-worker'),
+					paralel: 1,
+					streams: variant.streams
+				});
+				var nums = [];
+				for (var i = 0; i < 100; i++) {
+					nums.push(i);
+				}
+				// use TypedArray for dense transfer
+				var arr = new Uint16Array(nums);
+				var work = [];
+				for (var j = 0; j < 500; j++) {
+					work.push(pool.run('sumNodeAsync', arr));
+				}
+				return Promise.all(work);
+			});
+		});
+
+		describe('resolution', () => {
+			var data = [
+				[1, 2, 3, 4],
+				[1, 2, 3, 4],
+				[11, 22, 33, 44],
+				[11, 22, 33, 44],
+				[111, 222, 333, 444],
+				[111, 222, 333, 444],
+			];
+			var expected = [
+				10,
+				10,
+				110,
+				110,
+				1110,
+				1110
+			];
+			function testMethod(method: string) {
+				it(method, () => {
+					var pool = mc.createPool({
+						worker: require.resolve('./test-worker'),
+						concurrent: 2,
+						streams: variant.streams
+					});
+
+					return Promise.all(data.map((value) => {
+						return pool.run(method, value);
+					})).then((res) => {
+						assert.deepEqual(res, expected);
+					});
+				});
+			}
+			testMethod('sumSync');
+			testMethod('sumNodeSync');
+			testMethod('sumNodeAsync');
+			testMethod('sumPromise');
+		});
+	});
 });
 
 describe('streams', () => {
@@ -322,7 +358,6 @@ describe('errors', () => {
 			});
 		});
 	}
-
 	testError('errorSync');
 	testError('errorNodeSync');
 	testError('errorNodeAsync');
@@ -381,6 +416,5 @@ describe('cases', () => {
 			});
 		});
 	}
-
 	testMantiSub(path.join(__dirname, 'many', 'main.js'));
 });
