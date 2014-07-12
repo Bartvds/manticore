@@ -113,7 +113,6 @@ export class Worker extends events.EventEmitter {
 					});
 				}
 			});
-
 			this.multiplex.on('error', (err) => {
 				console.log('worker multiplex error');
 				console.log(err.stack);
@@ -191,13 +190,10 @@ export class Worker extends events.EventEmitter {
 			this.status('client closed WORK_TO_CLIENT stream');
 			this.kill();
 		});
-
 		this.child.stdio[lib.CLIENT_TO_WORK].on('close', () => {
 			this.status('client closed CLIENT_TO_WORK stream');
 			this.kill();
 		});
-
-		this.child.send({a: 1}, null);
 
 		var onMessage = (msg: lib.IResultMessage) => {
 			if (msg.type === lib.WORKER_READY) {

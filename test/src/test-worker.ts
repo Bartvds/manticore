@@ -34,7 +34,7 @@ export function sumNodeAsync(params: number[], callback: Manticore.ICallback): v
 		callback(null, reduce(params, (memo: number, value: number) => {
 			return memo + value;
 		}, 0));
-	}, 10);
+	}, 1);
 }
 
 export function sumPromise(params: number[]): any {
@@ -45,6 +45,15 @@ export function sumPromise(params: number[]): any {
 			return memo + value;
 		}, 0));
 	});
+}
+
+export function bigSum(params: number[], callback: Manticore.ICallback): any {
+	mc.assertType(params, 'arraylike');
+	var total = 0;
+	for (var i = 0, ii = params.length; i < ii; i++) {
+		total += params[i];
+	}
+	callback(null, total);
 }
 
 export function echo(params: string[]): any {

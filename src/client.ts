@@ -15,9 +15,7 @@ import minimist = require('minimist');
 import lib = require('./lib');
 import streams = require('./streams');
 
-var argv = minimist(process.argv.slice(2), {
-	boolean: [lib.ARG_STREAMS]
-});
+var argv: any;
 
 var state = {
 	id: 'worker.' + process.pid,
@@ -50,6 +48,11 @@ function init(): void {
 		return;
 	}
 	state.isInit = true;
+
+	argv = minimist(process.argv.slice(2), {
+		boolean: [lib.ARG_STREAMS]
+	});
+
 	var fdI = 0;
 	var fdCheck = setInterval(() => {
 		try {
@@ -66,15 +69,12 @@ function init(): void {
 		clearInterval(fdCheck);
 
 		read = fs.createReadStream(null, {fd: lib.WORK_TO_CLIENT});
-
 		read.on('error', function (err) {
 			bail('client intput stream errored', err);
 		});
-
 		read.on('close', () => {
 			bail('client intput stream unexpectedly closed');
 		});
-
 		read.on('end', () => {
 			bail('client intput stream unexpectedly ended');
 		});
@@ -96,7 +96,6 @@ function init(): void {
 		});
 
 		objects = read.pipe(buffo.decodeStream());
-
 		objects.on('data', (msg) => {
 			if (msg.type === lib.TASK_RUN) {
 				process.nextTick(() => {
@@ -108,14 +107,12 @@ function init(): void {
 				console.error(msg);
 			}
 		});
-
 		objects.on('error', function (err) {
 			state.closing = true;
 			bail('object input stream errored', err);
 		});
 
 		process.send({type: lib.WORKER_READY});
-
 	}, 10);
 
 	process.on('uncaughtException', (err: any) => {
@@ -198,23 +195,23 @@ class Handle {
 
 		// detect stream
 		if (this.res.result && this.res.result.owner === streams.ident) {
-		if (!argv[lib.ARG_STREAMS]) {
-			this.res.error = new Error('enable stream support in pool options');
-			this.res.result = null;
-		}
-		else {
-			var stream = <streams.IDStream> this.res.result;
-			this.res.stream = stream.id;
-			this.res.objectMode = stream.objectMode;
-			this.res.result = null;
-			process.nextTick(() => {
-				var out = multiplex.createStream(stream.id);
-				stream.on('end', () => {
-					// multiplex.destroyStream(stream.id);
+			if (argv[lib.ARG_STREAMS]) {
+				var stream = <streams.IDStream> this.res.result;
+				this.res.stream = stream.id;
+				this.res.objectMode = stream.objectMode;
+				this.res.result = null;
+				process.nextTick(() => {
+					var out = multiplex.createStream(stream.id);
+					stream.on('end', () => {
+						// multiplex.destroyStream(stream.id);
+					});
+					stream.pipe(out);
 				});
-				stream.pipe(out);
-			});
-		}
+			}
+			else {
+				this.res.error = new Error('enable stream support in pool options');
+				this.res.result = null;
+			}
 		}
 		// Errors don't serialise well
 		if (typeOf(this.res.error) === 'object') {
@@ -230,7 +227,6 @@ function runFunc(msg: lib.IStartMessage): void {
 		worker: state.id,
 		type: lib.TASK_RESULT,
 		id: msg.id,
-		error: null,
 		result: null,
 		duration: null
 	};
@@ -280,5 +276,5 @@ process.on('uncaughtException', (e) => {
 });
 
 process.on('exit', () => {
-	console.log('exit %s', state.id);
+	// console.log('exit %s', state.id);
 });

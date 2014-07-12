@@ -71,7 +71,7 @@ declare module '__manticore/lib' {
         id: string;
         type: string;
         worker: string;
-        error: any;
+        error?: any;
         result: any;
         duration: number;
         stream?: string;

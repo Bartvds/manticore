@@ -150,31 +150,38 @@ describe('core', () => {
 });
 
 describe('big jobs', () => {
-	it('long', () => {
+
+	var num10k = [];
+	for (var i = 0; i < 10000; i++) {
+		num10k.push(i);
+	}
+
+	it('long arr', () => {
 		var pool = mc.createPool({
-			worker: require.resolve('./test-worker'),
-			concurrent: 1
+			worker: require.resolve('./test-worker')
 		});
-		var nums = [];
-		for (var i = 0; i < 10000; i++) {
-			nums.push(i);
-		}
-		return pool.run('sumNodeAsync', nums);
+		return pool.run('sumNodeAsync', num10k);
+	});
+	it('long uint', () => {
+		var pool = mc.createPool({
+			worker: require.resolve('./test-worker')
+		});
+		return pool.run('sumNodeAsync', new Uint16Array(num10k));
 	});
 	it('many', () => {
 		var pool = mc.createPool({
 			worker: require.resolve('./test-worker'),
-			concurrent: 2,
-			paralel: 4
+			paralel: 1
 		});
-		var work = [];
+		var nums = [];
 		for (var i = 0; i < 100; i++) {
-			var nums = [];
-			for (var j = i; j < i + 100000; j++) {
-				nums.push(j);
-			}
-			// use TypedArray for dense transfer
-			work.push(pool.run('sumNodeAsync', new Uint16Array(nums)));
+			nums.push(i);
+		}
+		// use TypedArray for dense transfer
+		var arr = new Uint16Array(nums);
+		var work = [];
+		for (var j = 0; j < 500; j++) {
+			work.push(pool.run('sumNodeAsync', arr));
 		}
 		return Promise.all(work);
 	});
@@ -223,7 +230,6 @@ describe('streams', () => {
 	it('have to be enabled', () => {
 		var pool = mc.createPool({
 			worker: require.resolve('./stream-worker'),
-			concurrent: 1,
 			streams: false
 		});
 
@@ -236,7 +242,6 @@ describe('streams', () => {
 	it('returns raw stream', () => {
 		var pool = mc.createPool({
 			worker: require.resolve('./stream-worker'),
-			concurrent: 1,
 			streams: true
 		});
 		var expected = 'abcdefghijklmnopqrstuvwxyz';
@@ -265,7 +270,6 @@ describe('streams', () => {
 	it('returns object stream', () => {
 		var pool = mc.createPool({
 			worker: require.resolve('./stream-worker'),
-			concurrent: 1,
 			streams: true
 		});
 		var expected = [
@@ -306,8 +310,7 @@ describe('errors', () => {
 	function testError(method: string) {
 		it(method, () => {
 			var pool = mc.createPool({
-				worker: require.resolve('./test-worker'),
-				concurrent: 2
+				worker: require.resolve('./test-worker')
 			});
 
 			return pool.run(method, 123).then((res) => {

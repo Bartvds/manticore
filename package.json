@@ -41,7 +41,7 @@
   "dependencies": {
     "bl": "^0.8.2",
     "bluebird": "^1.2.4",
-    "buffo": "^0.1.0",
+    "buffo": "^0.1.1",
     "minimist": "^0.2.0",
     "multiplex": "^2.0.2",
     "type-detect": "^0.1.2"

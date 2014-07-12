@@ -86,7 +86,7 @@ module.exports = function (grunt) {
 		mochaTest: {
 			options: {
 				reporter: 'mocha-unfunk-reporter',
-				timeout: 18000
+				timeout: 20000
 			},
 			all: {
 				src: 'test/tmp/*.test.js'
