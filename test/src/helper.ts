@@ -2,6 +2,13 @@
 
 import stream = require('stream');
 
+var semexp = /^v(\d+).(\d+).(\d+)/;
+
+export function getNodeMinor(): number {
+	var m = process.version.match(semexp);
+	return parseInt(m[2], 10);
+}
+
 export class CountStream extends stream.Readable {
 	private _index: number = 0;
 	private _max: number;

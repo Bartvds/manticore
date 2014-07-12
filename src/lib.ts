@@ -23,12 +23,15 @@ export var CLIENT_RETURN: string = 'cr';
 
 export var STATUS: string = 'status';
 
+export var ARG_STREAMS: string = 'mc-streams';
+
 export interface IOptions {
 	worker: string;
 	concurrent?: number;
 	paralel?: number;
 	attempts?: number;
 	idleTimeout?: number;
+	streams?: boolean;
 	harmony?: boolean;
 	log?: boolean;
 	emit?: boolean;
@@ -86,6 +89,23 @@ export function optValue<T>(value: T, alt: T): T {
 		return value;
 	}
 	return alt;
+}
+
+export function jsonError(error: any): any {
+	var ret: any = {
+		name: error.name,
+		message: error.message,
+		stack: error.stack
+	};
+	if (typeof error.code !== 'undefined') {
+		ret.code = error.code;
+	}
+	if (error.name === 'AssertionError') {
+		error.actual = error.actual;
+		error.expected = error.expected;
+		error.showDiff = error.showDiff;
+	}
+	return ret;
 }
 
 export class BumpTimeout {

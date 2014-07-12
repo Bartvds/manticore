@@ -25,6 +25,9 @@
 		},
 		"source-map-support/source-map-support.d.ts": {
 			"commit": "b3ffb84c7eb3c282076f4322fe99d922e2a842cf"
+		},
+		"minimist/minimist.d.ts": {
+			"commit": "33bf97ba1e33fcb11f74f191f3426d16e779fdbd"
 		}
 	}
 }

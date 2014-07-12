@@ -82,6 +82,10 @@ var pool = mc.createPool({
 	// maximum retries if a worker fails
 	attempts?: number;
 
+	// enable stream support
+	// - default: false
+	streams?: boolean;
+
 	// worker idle timeout in miliseconds, shuts down workers that are idling
 	idleTimeout?: number;
 	
@@ -155,6 +159,7 @@ function myFunc3(params) {
 }
 
 // stream data amd pipe to a `returnStream`: choose either object or binary mode
+// - note: stream support must be enabled in the pool options
 function myFunc4(params) {
 	// lets use object mode here
     return someStream(params).pipe(mc.returnStream(true));
@@ -209,6 +214,16 @@ That's it! :+1:
 ## Streams
 
 To return a stream from a task create a 'return stream' via `mc.returnStream(objectMode)`, then pipe data (or objects) and return it. When using objectMode the objects get serialised via Buffo.
+
+Multiplexing data over a pipe creates some overhead, so streams have to be explicitly enabled with the `streams` option.
+
+````
+var mc = require('manticore');
+var pool = mc.createPool({
+	modulePath: require.resolve('./worker'),
+	streams: true
+});
+````
 
 In the worker:
 

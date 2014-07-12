@@ -49,12 +49,14 @@ declare module '__manticore/lib' {
     export var CLIENT: string;
     export var CLIENT_RETURN: string;
     export var STATUS: string;
+    export var ARG_STREAMS: string;
     export interface IOptions {
         worker: string;
         concurrent?: number;
         paralel?: number;
         attempts?: number;
         idleTimeout?: number;
+        streams?: boolean;
         harmony?: boolean;
         log?: boolean;
         emit?: boolean;
@@ -81,6 +83,7 @@ declare module '__manticore/lib' {
     export function assertProp(value: any, prop: string, type: string): void;
     export function assertType(value: any, type: string, label?: string): void;
     export function optValue<T>(value: T, alt: T): T;
+    export function jsonError(error: any): any;
     export class BumpTimeout {
         constructor(delay: number, call: () => void, unRef?: boolean);
         bump(): void;

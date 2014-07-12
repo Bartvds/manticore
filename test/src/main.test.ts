@@ -10,6 +10,8 @@ import deepEqual = require('deep-eql');
 import Manticore = require('manticore');
 import Promise = require('bluebird');
 
+import helper = require('./helper');
+
 import chai = require('chai');
 var assert = chai.assert;
 
@@ -145,7 +147,9 @@ describe('core', () => {
 			assert.strictEqual(res, 123);
 		});
 	});
+});
 
+describe('big jobs', () => {
 	it('long', () => {
 		var pool = mc.createPool({
 			worker: require.resolve('./test-worker'),
@@ -157,7 +161,6 @@ describe('core', () => {
 		}
 		return pool.run('sumNodeAsync', nums);
 	});
-
 	it('many', () => {
 		var pool = mc.createPool({
 			worker: require.resolve('./test-worker'),
@@ -178,7 +181,6 @@ describe('core', () => {
 });
 
 describe('resolution', () => {
-
 	var data = [
 		[1, 2, 3, 4],
 		[1, 2, 3, 4],
@@ -187,7 +189,6 @@ describe('resolution', () => {
 		[111, 222, 333, 444],
 		[111, 222, 333, 444],
 	];
-
 	var expected = [
 		10,
 		10,
@@ -219,10 +220,24 @@ describe('resolution', () => {
 });
 
 describe('streams', () => {
+	it('have to be enabled', () => {
+		var pool = mc.createPool({
+			worker: require.resolve('./stream-worker'),
+			concurrent: 1,
+			streams: false
+		});
+
+		return pool.run('alphabet').then((res: NodeJS.ReadableStream) => {
+			assert(false, 'expected to error');
+		}, (err) => {
+			assert.match(err.message, /^enable /);
+		});
+	});
 	it('returns raw stream', () => {
 		var pool = mc.createPool({
 			worker: require.resolve('./stream-worker'),
-			concurrent: 1
+			concurrent: 1,
+			streams: true
 		});
 		var expected = 'abcdefghijklmnopqrstuvwxyz';
 
@@ -247,11 +262,11 @@ describe('streams', () => {
 			});
 		});
 	});
-
 	it('returns object stream', () => {
 		var pool = mc.createPool({
 			worker: require.resolve('./stream-worker'),
-			concurrent: 1
+			concurrent: 1,
+			streams: true
 		});
 		var expected = [
 			{num: 0},
@@ -309,6 +324,37 @@ describe('errors', () => {
 	testError('errorNodeSync');
 	testError('errorNodeAsync');
 	testError('errorPromise');
+});
+
+describe('harmony', () => {
+	it('must be enabled', () => {
+		var pool = mc.createPool({
+			worker: require.resolve('./harmony-worker'),
+			attempts: 1,
+			harmony: false
+		});
+		return pool.run('numbers').then((res) => {
+			assert.fail('expected to fail');
+		}, (err) => {
+			assert.match(err.message, /^Set is not defined/);
+		});
+	});
+	if (helper.getNodeMinor() > 10) {
+		it('can be enabled', () => {
+			var pool = mc.createPool({
+				worker: require.resolve('./harmony-worker'),
+				harmony: true
+			});
+			return pool.run('numbers').then((res) => {
+				assert.strictEqual(res, 10);
+			});
+		});
+	}
+	else {
+		it.skip('not testable', () => {
+
+		});
+	}
 });
 
 describe('cases', () => {

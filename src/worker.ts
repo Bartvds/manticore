@@ -83,50 +83,56 @@ export class Worker extends events.EventEmitter {
 			}
 		});
 
-		this.multiplex = multiplexMod((stream, id) => {
-			// this.status('received stream ' + id);
-			if (id === lib.CLIENT) {
-				this.status('client stream open', id);
-				stream.pipe(this.read);
-			}
-			else if (id in this.returnStreams) {
-				var info = this.returnStreams[id];
-				this.status('return stream open', id, info.job.id);
-
-				if (info.objectMode) {
-					stream = stream.pipe(buffo.decodeStream());
+		if (this.options.streams) {
+			this.multiplex = multiplexMod((stream, id) => {
+				// this.status('received stream ' + id);
+				if (id === lib.CLIENT) {
+					this.status('client stream open', id);
+					stream.pipe(this.read);
 				}
-				info.stream = stream;
-				info.job.callback(null, stream);
+				else if (id in this.returnStreams) {
+					var info = this.returnStreams[id];
+					this.status('return stream open', id, info.job.id);
 
-				stream.on('end', () => {
-					this.status('return stream end', id, info.job.id);
-					this.idleTimer.bump();
-					this.multiplex.destroyStream(id);
-					delete this.returnStreams[id];
-				});
-				stream.on('error', (err) => {
-					this.status('return stream error', id, info.job.id);
-					this.idleTimer.bump();
-					delete this.returnStreams[id];
-				});
-			}
-		});
-		this.multiplex.on('error', (err) => {
-			console.log('worker multiplex error');
-			console.log(err.stack);
-			this.kill();
-		});
-		this.multiplex.on('end', () => {
-			console.log('worker multiplex end');
-			this.kill();
-		});
+					if (info.objectMode) {
+						stream = stream.pipe(buffo.decodeStream());
+					}
+					info.stream = stream;
+					info.job.callback(null, stream);
+
+					stream.on('end', () => {
+						this.status('return stream end', id, info.job.id);
+						this.idleTimer.bump();
+						this.multiplex.destroyStream(id);
+						delete this.returnStreams[id];
+					});
+					stream.on('error', (err) => {
+						this.status('return stream error', id, info.job.id);
+						this.idleTimer.bump();
+						delete this.returnStreams[id];
+					});
+				}
+			});
+
+			this.multiplex.on('error', (err) => {
+				console.log('worker multiplex error');
+				console.log(err.stack);
+				this.kill();
+			});
+			this.multiplex.on('end', () => {
+				console.log('worker multiplex end');
+				this.kill();
+			});
+		}
 
 		var args: any[] = [];
 		if (this.options.harmony) {
 			args.push('--harmony');
 		}
 		args.push(this.options.worker);
+		if (this.options.streams) {
+			args.push('--' + lib.ARG_STREAMS);
+		}
 
 		var opts = {
 			cwd: process.cwd(),
@@ -139,9 +145,15 @@ export class Worker extends events.EventEmitter {
 		this.write = buffo.encodeStream();
 		this.write.pipe(this.child.stdio[lib.WORK_TO_CLIENT]);
 
-		this.child.stdio[lib.CLIENT_TO_WORK].pipe(this.multiplex);
-
 		this.read = buffo.decodeStream();
+
+		if (this.options.streams) {
+			this.child.stdio[lib.CLIENT_TO_WORK].pipe(this.multiplex);
+		}
+		else {
+			this.child.stdio[lib.CLIENT_TO_WORK].pipe(this.read);
+		}
+
 		this.read.on('data', (msg: lib.IResultMessage) => {
 			if (msg.type === lib.TASK_RESULT) {
 				if (msg.id in this.jobs) {
