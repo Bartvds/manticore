@@ -79,7 +79,7 @@ export class Worker extends events.EventEmitter {
 				this.kill();
 			}
 			else {
-				this.idleTimer.next();
+				this.idleTimer.bump();
 			}
 		});
 
@@ -101,13 +101,13 @@ export class Worker extends events.EventEmitter {
 
 				stream.on('end', () => {
 					this.status('return stream end', id, info.job.id);
-					this.idleTimer.next();
+					this.idleTimer.bump();
 					this.multiplex.destroyStream(id);
 					delete this.returnStreams[id];
 				});
 				stream.on('error', (err) => {
 					this.status('return stream error', id, info.job.id);
-					this.idleTimer.next();
+					this.idleTimer.bump();
 					delete this.returnStreams[id];
 				});
 			}
@@ -169,7 +169,7 @@ export class Worker extends events.EventEmitter {
 						job.callback(msg.error, msg.result);
 					}
 					this.emit(lib.TASK_RESULT, job);
-					this.idleTimer.next();
+					this.idleTimer.bump();
 				}
 			}
 		});
@@ -247,7 +247,7 @@ export class Worker extends events.EventEmitter {
 		}
 		this.jobs[job.id] = job;
 		this._activeCount++;
-		this.idleTimer.next();
+		this.idleTimer.bump();
 
 		if (this.ready) {
 			this.send(job);
@@ -273,7 +273,7 @@ export class Worker extends events.EventEmitter {
 	}
 
 	private flushWaiting(): void {
-		this.idleTimer.next();
+		this.idleTimer.bump();
 
 		for (var id in this.jobs) {
 			var job = this.jobs[id];

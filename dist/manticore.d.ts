@@ -48,7 +48,6 @@ declare module '__manticore/lib' {
     export var CLIENT_TO_WORK: number;
     export var CLIENT: string;
     export var CLIENT_RETURN: string;
-    export var CHUNKY_SIZE: number;
     export var STATUS: string;
     export interface IOptions {
         worker: string;
@@ -84,7 +83,7 @@ declare module '__manticore/lib' {
     export function optValue<T>(value: T, alt: T): T;
     export class BumpTimeout {
         constructor(delay: number, call: () => void, unRef?: boolean);
-        next(): void;
+        bump(): void;
         clear(): void;
     }
 }

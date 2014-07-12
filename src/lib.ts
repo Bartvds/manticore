@@ -88,9 +88,6 @@ export function optValue<T>(value: T, alt: T): T {
 	return alt;
 }
 
-var timerIDI = 0;
-var baseTime = Date.now();
-
 export class BumpTimeout {
 	// setTimeout that gets reaised a lot so limit resets on bumps
 
@@ -105,7 +102,6 @@ export class BumpTimeout {
 
 	private _bumped: number = Date.now();
 	private _prev: number = Date.now();
-	private _id: number = timerIDI++;
 
 	constructor(delay: number, call: () => void, unRef: boolean = true) {
 		this._delay = delay;
@@ -121,21 +117,18 @@ export class BumpTimeout {
 				}
 			}
 			else {
-				// console.log('timeout #%s call %s %s', this._id, (now - this._prev), this._delay);
 				this._call();
 				this._prev = now;
 				this._end = 0;
 			}
 		};
 
-		this.next();
+		this.bump();
 	}
 
-	next(): void {
+	bump(): void {
 		var now = Date.now();
 		var end = now + this._delay;
-
-		// console.log('timeout #%s next %s %s', this._id, (now - this._bumped), this._delay);
 
 		this._bumped = now;
 
