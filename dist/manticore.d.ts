@@ -48,6 +48,7 @@ declare module '__manticore/lib' {
     export var CLIENT_TO_WORK: number;
     export var CLIENT: string;
     export var CLIENT_RETURN: string;
+    export var CHUNKY_SIZE: number;
     export var STATUS: string;
     export interface IOptions {
         worker: string;

@@ -45,3 +45,53 @@ class PassStream extends stream.Transform implements IDStream {
 		done();
 	}
 }
+
+export class ChunkyStream extends stream.Transform {
+	private length: number = 0;
+	private target: number;
+	private buffers: Buffer[] = [];
+	private flushAll: () => void;
+	private next: boolean = false;
+
+	constructor(target: number) {
+		super({objectMode: false});
+		this.target = target;
+
+		this.flushAll = () => {
+			this.next = false;
+			if (this.length > 0) {
+				var buf = Buffer.concat(this.buffers);
+				this.buffers = [];
+				this.length = 0;
+				this.push(buf);
+			}
+		};
+	}
+
+	_transform(chunk, encoding, done) {
+		console.log('%s %s', chunk.length, this.length);
+
+		if (this.length + chunk.length >= this.target) {
+			if (this.length > 0) {
+				this.push(Buffer.concat(this.buffers));
+				this.buffers = [];
+				this.length = 0;
+			}
+			this.push(chunk);
+		}
+		else {
+			this.length += chunk.length;
+			this.buffers.push(chunk);
+			if (!this.next) {
+				this.next = true;
+				process.nextTick(this.flushAll);
+			}
+		}
+		done();
+	}
+
+	_flush(done) {
+		this.flushAll();
+		done();
+	}
+}
