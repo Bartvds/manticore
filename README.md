@@ -8,7 +8,7 @@
 
 Fork node.js multi-core workers and crunch legendary workloads.
 
-The core concept is you got some code in a function that does some heavy work and you want to run it many times with maximum benefit of your multi-core CPU, and without the overhead of re-spawning piles single-use sub-processes.
+The core concept is you got some code in a function that does some heavy work and you want to run it many times with maximum benefit of your multi-core CPU and without the overhead of re-spawning piles single-use sub-processes.
 
 :warning: Early release :sunglasses:
 
@@ -58,43 +58,20 @@ Workers can also return streams!
 - For best performance when transferring large amounts of data use String, Buffer or a TypedArray params. Regular Array has more encoding and bandwidth overhead (every element has its own type).
 - For more speed and streamy processes return a stream, either binary or one of the above.
 
+
 ## Todo
 
 - Separate settings per function.
+- Allow sending streams to worker
+
+
+## Install
+
+````bash
+$ npm install manticore
+````
 
 ## Usage
-
-### Pool options
-
-````ts
-var pool = mc.createPool({
-	// path to the worker module. pro-tip: use require.resolve()
-	worker: string;
-	
-	// maximum amount of worker processes
-	// - defaults: require('os').cpus().length
-	// tip: when running on many cores leave 1 core free for main process: require('os').cpus().length -1
-	concurrent?: number;
-	// maximum amount of jobs to pass to each worker
-	// set this to a higher value if your jobs are async and IO-bound
-	// - default: 1
-	paralel?: number;
-	// maximum retries if a worker fails
-	attempts?: number;
-
-	// enable stream support
-	// - default: false
-	streams?: boolean;
-
-	// worker idle timeout in miliseconds, shuts down workers that are idling
-	idleTimeout?: number;
-	
-	// emit 'status' events, handy for debugging
-	emit?: boolean;
-	// console.log status events
-	log?: boolean;
-});
-````
 
 ### Setup worker tasks
 
@@ -166,7 +143,7 @@ function myFunc4(params) {
 }
 ````
 
-## Use the pool
+### Use the pool
 
 Create a pool in the main app:
 
@@ -206,6 +183,38 @@ Pro-tip: for serious bulk processing use `Promise.all()` (in Bluebird this is fu
 ````js
 Promise.all(myArray.map(pool.curried('myFunc1'))).then(function(results) {
     // got all the results
+});
+````
+
+### Pool options
+
+````ts
+var pool = mc.createPool({
+	// path to the worker module. pro-tip: use require.resolve()
+	worker: string;
+	
+	// maximum amount of worker processes
+	// - defaults: require('os').cpus().length
+	// tip: when running on many cores leave 1 core free for main process: require('os').cpus().length -1
+	concurrent?: number;
+	// maximum amount of jobs to pass to each worker
+	// set this to a higher value if your jobs are async and IO-bound
+	// - default: 1
+	paralel?: number;
+	// maximum retries if a worker fails
+	attempts?: number;
+
+	// enable stream support
+	// - default: false
+	streams?: boolean;
+
+	// worker idle timeout in miliseconds, shuts down workers that are idling
+	idleTimeout?: number;
+	
+	// emit 'status' events, handy for debugging
+	emit?: boolean;
+	// console.log status events
+	log?: boolean;
 });
 ````
 
