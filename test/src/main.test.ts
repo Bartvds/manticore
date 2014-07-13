@@ -27,7 +27,7 @@ interface IVariantMap {
 
 var variance: IVariantMap = {
 	'no-streams': {
-		skip: true,
+		skip: false,
 		streams: false
 	},
 	'streams': {
