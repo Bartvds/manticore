@@ -9,7 +9,7 @@ import stream = require('stream');
 import assertMod = require('assert');
 import typeOf = require('type-detect');
 import buffo = require('buffo');
-import multiplexMod = require('multiplex');
+import muxie = require('muxie');
 import minimist = require('minimist');
 
 import lib = require('./lib');
@@ -29,7 +29,7 @@ var read: NodeJS.ReadableStream = null;
 var write: NodeJS.WritableStream = null;
 var objects: NodeJS.ReadWriteStream = null;
 
-var multiplex: multiplexMod.Multiplex;
+var muxer: muxie.Muxer;
 
 export interface ITaskFunc {
 	(params: any, callback: lib.IResultCallback): any;
@@ -82,9 +82,9 @@ function init(): void {
 		write = buffo.encodeStream();
 
 		if (argv[lib.ARG_STREAMS]) {
-			multiplex = multiplexMod();
-			multiplex.pipe(fs.createWriteStream(null, {fd: lib.CLIENT_TO_WORK}));
-			write.pipe(multiplex.createStream(lib.CLIENT));
+			muxer = muxie.muxer();
+			muxer.pipe(fs.createWriteStream(null, {fd: lib.CLIENT_TO_WORK}));
+			write.pipe(muxer.create(lib.CLIENT));
 		}
 		else {
 			write.pipe(fs.createWriteStream(null, {fd: lib.CLIENT_TO_WORK}));
@@ -201,7 +201,7 @@ class Handle {
 				this.res.objectMode = stream.objectMode;
 				this.res.result = null;
 				process.nextTick(() => {
-					var out = multiplex.createStream(stream.id);
+					var out = muxer.create(stream.id);
 					stream.on('end', () => {
 						// multiplex.destroyStream(stream.id);
 					});

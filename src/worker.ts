@@ -11,7 +11,7 @@ import child_process = require('child_process');
 import typeOf = require('type-detect');
 import Promise = require('bluebird');
 import buffo = require('buffo');
-import multiplexMod = require('multiplex');
+import muxie = require('muxie');
 
 import lib = require('./lib');
 import streams = require('./streams');
@@ -62,7 +62,7 @@ export class Worker extends events.EventEmitter {
 	private ready: boolean = false;
 	private jobs: JobDict = Object.create(null);
 	private idleTimer: lib.BumpTimeout;
-	private multiplex: multiplexMod.Multiplex;
+	private demuxer: NodeJS.WritableStream;
 	private _activeCount: number = 0;
 	private returnStreams: StreamDict = Object.create(null);
 
@@ -84,7 +84,7 @@ export class Worker extends events.EventEmitter {
 		});
 
 		if (this.options.streams) {
-			this.multiplex = multiplexMod((stream, id) => {
+			this.demuxer = muxie.demuxer((stream, id) => {
 				// this.status('received stream ' + id);
 				if (id === lib.CLIENT) {
 					this.status('client stream open', id);
@@ -103,7 +103,7 @@ export class Worker extends events.EventEmitter {
 					stream.on('end', () => {
 						this.status('return stream end', id, info.job.id);
 						this.idleTimer.bump();
-						this.multiplex.destroyStream(id);
+						// this.muxer.destroyStream(id);
 						delete this.returnStreams[id];
 					});
 					stream.on('error', (err) => {
@@ -113,12 +113,12 @@ export class Worker extends events.EventEmitter {
 					});
 				}
 			});
-			this.multiplex.on('error', (err) => {
+			this.demuxer.on('error', (err) => {
 				console.log('worker multiplex error');
 				console.log(err.stack);
 				this.kill();
 			});
-			this.multiplex.on('end', () => {
+			this.demuxer.on('end', () => {
 				console.log('worker multiplex end');
 				this.kill();
 			});
@@ -142,15 +142,21 @@ export class Worker extends events.EventEmitter {
 		this.id = 'worker.' + this.child.pid;
 
 		this.write = buffo.encodeStream();
-		this.write.pipe(this.child.stdio[lib.WORK_TO_CLIENT]);
+		this.write
+			// .pipe(new streams.StatsStream('work_to_client'))
+			.pipe(this.child.stdio[lib.WORK_TO_CLIENT]);
 
 		this.read = buffo.decodeStream();
 
 		if (this.options.streams) {
-			this.child.stdio[lib.CLIENT_TO_WORK].pipe(this.multiplex);
+			this.child.stdio[lib.CLIENT_TO_WORK]
+				// .pipe(new streams.StatsStream('client_to_work'))
+				.pipe(this.demuxer);
 		}
 		else {
-			this.child.stdio[lib.CLIENT_TO_WORK].pipe(this.read);
+			this.child.stdio[lib.CLIENT_TO_WORK]
+			.pipe(new streams.StatsStream('client_to_work'))
+			.pipe(this.read);
 		}
 
 		this.read.on('data', (msg: lib.IResultMessage) => {

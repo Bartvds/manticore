@@ -8,3 +8,4 @@
 /// <reference path="multiplex/multiplex.d.ts" />
 /// <reference path="deep-eql/deep-eql.d.ts" />
 /// <reference path="minimist/minimist.d.ts" />
+/// <reference path="muxie/muxie.d.ts" />

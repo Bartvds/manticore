@@ -19,6 +19,7 @@ var mc: typeof Manticore = require('../../dist/index');
 
 interface IVariant {
 	streams: boolean;
+	skip?: boolean;
 }
 interface IVariantMap {
 	[label: string]: IVariant;
@@ -26,16 +27,21 @@ interface IVariantMap {
 
 var variance: IVariantMap = {
 	'no-streams': {
+		skip: true,
 		streams: false
 	},
 	'streams': {
+		skip: false,
 		streams: true
 	}
 };
 
 Object.keys(variance).forEach((label) => {
 	var variant: IVariant = variance[label];
-	describe('variant ' + label, () => {
+	if (variant.skip) {
+		return;
+	}
+	describe('variant: ' + label, () => {
 		describe('string', () => {
 			it('simple', () => {
 				var pool = mc.createPool({
@@ -182,7 +188,6 @@ Object.keys(variance).forEach((label) => {
 		});
 
 		describe('big jobs', () => {
-
 			var num10k = [];
 			for (var i = 0; i < 10000; i++) {
 				num10k.push(i);
@@ -205,17 +210,17 @@ Object.keys(variance).forEach((label) => {
 			it('many', () => {
 				var pool = mc.createPool({
 					worker: require.resolve('./test-worker'),
-					paralel: 1,
+					paralel: 2,
 					streams: variant.streams
 				});
 				var nums = [];
-				for (var i = 0; i < 100; i++) {
+				for (var i = 0; i < 10; i++) {
 					nums.push(i);
 				}
 				// use TypedArray for dense transfer
 				var arr = new Uint16Array(nums);
 				var work = [];
-				for (var j = 0; j < 500; j++) {
+				for (var j = 0; j < 50; j++) {
 					work.push(pool.run('sumNodeAsync', arr));
 				}
 				return Promise.all(work);
