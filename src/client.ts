@@ -117,9 +117,16 @@ function init(): void {
 function bail(message: any, ...messages: any[]): void {
 	console.error.apply(console, arguments);
 	abortAll();
-	read.removeAllListeners();
-	write.removeAllListeners();
-	objects.removeAllListeners();
+
+	if (read) {
+		read.removeAllListeners();
+	}
+	if (write) {
+		write.removeAllListeners();
+	}
+	if (objects) {
+		objects.removeAllListeners();
+	}
 	process.exit(1);
 }
 
